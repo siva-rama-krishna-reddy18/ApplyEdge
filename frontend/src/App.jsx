@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -1343,6 +1343,12 @@ function JobsTab({ resumeSkills = [], savedJobs = [], saveJob, unsaveJob, isJobS
 // ── Results Screen ────────────────────────────────────────────────────────────
 function ResultsScreen({ data, filename, onReset }) {
   const [activeTab, setActiveTab] = useState("overview");
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+  useEffect(() => {
+    const handle = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handle);
+    return () => window.removeEventListener("resize", handle);
+  }, []);
   const [savedJobs, setSavedJobs] = useState(() => {
     try { return JSON.parse(localStorage.getItem("applyedge_saved") || "[]"); }
     catch { return []; }
@@ -1444,47 +1450,71 @@ function ResultsScreen({ data, filename, onReset }) {
         </div>
       </header>
 
-      <div style={{flex:1,display:"flex"}} className="results-layout">
+      <div style={{flex:1,display:"flex",flexDirection: isMobile ? "column" : "row"}}>
 
         {/* Sidebar */}
-        <aside style={{width:218,flexShrink:0,background:"#FFFFFF",
-          borderRight:"1px solid #DDE3EE",
-          position:"sticky",top:56,height:"calc(100vh - 56px)",
-          overflowY:"auto",padding:"20px 0"}} className="sidebar">
-          {groups.map(group => (
-            <div key={group} style={{marginBottom:6}}>
-              <div style={{padding:"4px 18px 8px",fontSize:10,fontWeight:700,
-                color:"#9CA3AF",letterSpacing:"0.1em",textTransform:"uppercase"}}>
-                {group}
-              </div>
-              {NAV.filter(n=>n.group===group).map(n=>(
-                <button key={n.id} onClick={()=>setActiveTab(n.id)}
-                  style={{width:"100%",display:"flex",alignItems:"center",gap:9,
-                    padding:"9px 18px",border:"none",cursor:"pointer",textAlign:"left",
-                    background: activeTab===n.id?"#EEF3FB":"transparent",
-                    borderLeft: activeTab===n.id?"3px solid #1B4F8A":"3px solid transparent",
-                    transition:"all .12s"}}>
-                  <span style={{fontSize:15}}>{n.emoji}</span>
-                  <span style={{fontSize:13,fontWeight:activeTab===n.id?600:400,
-                    color:activeTab===n.id?"#1B4F8A":"#4B5563",flex:1}}>
-                    {n.label}
-                  </span>
-                  {n.badge ? (
-                    <span style={{fontSize:10,fontWeight:700,minWidth:18,height:18,
-                      borderRadius:10,background:"#1B4F8A",color:"#fff",
-                      display:"flex",alignItems:"center",justifyContent:"center",padding:"0 4px"}}>
-                      {n.badge}
+        {/* ── MOBILE: horizontal pill tab bar ── */}
+        {isMobile && (
+          <div style={{background:"#FFFFFF",borderBottom:"1px solid #DDE3EE",
+            position:"sticky",top:56,zIndex:10,
+            display:"flex",overflowX:"auto",gap:6,padding:"8px 12px",
+            scrollbarWidth:"none"}}>
+            {NAV.map(n=>(
+              <button key={n.id} onClick={()=>setActiveTab(n.id)}
+                style={{display:"inline-flex",alignItems:"center",gap:5,
+                  padding:"6px 12px",borderRadius:20,border:"none",
+                  cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,
+                  fontSize:12,fontWeight:600,
+                  background: activeTab===n.id?"#1B4F8A":"#F4F6FB",
+                  color: activeTab===n.id?"#fff":"#4B5563"}}>
+                <span>{n.emoji}</span>{n.label}
+                {n.badge?<span style={{background:"rgba(255,255,255,0.3)",
+                  borderRadius:10,padding:"0 4px",fontSize:10}}>{n.badge}</span>:null}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* ── DESKTOP: vertical grouped sidebar ── */}
+        {!isMobile && (
+          <aside style={{width:218,flexShrink:0,background:"#FFFFFF",
+            borderRight:"1px solid #DDE3EE",position:"sticky",top:56,
+            height:"calc(100vh - 56px)",overflowY:"auto",padding:"20px 0"}}>
+            {groups.map(group => (
+              <div key={group} style={{marginBottom:6}}>
+                <div style={{padding:"4px 18px 8px",fontSize:10,fontWeight:700,
+                  color:"#9CA3AF",letterSpacing:"0.1em",textTransform:"uppercase"}}>
+                  {group}
+                </div>
+                {NAV.filter(n=>n.group===group).map(n=>(
+                  <button key={n.id} onClick={()=>setActiveTab(n.id)}
+                    style={{width:"100%",display:"flex",alignItems:"center",gap:9,
+                      padding:"9px 18px",border:"none",cursor:"pointer",textAlign:"left",
+                      background: activeTab===n.id?"#EEF3FB":"transparent",
+                      borderLeft: activeTab===n.id?"3px solid #1B4F8A":"3px solid transparent",
+                      transition:"all .12s"}}>
+                    <span style={{fontSize:15}}>{n.emoji}</span>
+                    <span style={{fontSize:13,fontWeight:activeTab===n.id?600:400,
+                      color:activeTab===n.id?"#1B4F8A":"#4B5563",flex:1}}>
+                      {n.label}
                     </span>
-                  ) : null}
-                </button>
-              ))}
-              <div style={{height:1,background:"#EEF0F5",margin:"10px 18px 4px"}}/>
-            </div>
-          ))}
-        </aside>
+                    {n.badge ? (
+                      <span style={{fontSize:10,fontWeight:700,minWidth:18,height:18,
+                        borderRadius:10,background:"#1B4F8A",color:"#fff",
+                        display:"flex",alignItems:"center",justifyContent:"center",padding:"0 4px"}}>
+                        {n.badge}
+                      </span>
+                    ) : null}
+                  </button>
+                ))}
+                <div style={{height:1,background:"#EEF0F5",margin:"10px 18px 4px"}}/>
+              </div>
+            ))}
+          </aside>
+        )}
 
         {/* Main */}
-        <main style={{flex:1,padding:"28px 32px",overflowY:"auto",minWidth:0}} className="main-content">
+        <main style={{flex:1,padding: isMobile ? "16px" : "28px 32px",overflowY:"auto",minWidth:0}}>
 
           {/* Breadcrumb */}
           <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:20}}>
