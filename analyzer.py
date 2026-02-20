@@ -13,8 +13,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-MODEL = "llama-3.3-70b-versatile"  # Use 70B for better structured output quality
+MODEL = "llama-3.3-70b-versatile"
+
+def get_client():
+    key = os.getenv("GROQ_API_KEY")
+    if not key:
+        raise RuntimeError("GROQ_API_KEY environment variable is not set")
+    return Groq(api_key=key)
 
 
 # ── PDF Text Extraction ───────────────────────────────────────────────────────
@@ -30,7 +35,7 @@ def extract_resume_text(file_bytes: bytes) -> str:
 
 # ── Groq call helper ──────────────────────────────────────────────────────────
 def call_groq(system: str, user: str, max_tokens: int = 2048) -> str:
-    response = client.chat.completions.create(
+    response = get_client().chat.completions.create(
         model=MODEL,
         messages=[
             {"role": "system", "content": system},
