@@ -300,10 +300,10 @@ function UploadScreen({ onAnalyzed }) {
       {/* Center content */}
       <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:"32px 24px"}}>
         <div style={{width:"100%",maxWidth:960,display:"grid",
-          gridTemplateColumns:"1fr 1px 400px",gap:0,alignItems:"center"}}>
+          gridTemplateColumns:"1fr 1px 400px",gap:0,alignItems:"center"}} className="upload-grid">
 
           {/* Left — headline + features */}
-          <div style={{paddingRight:56}}>
+          <div style={{paddingRight:56}} className="upload-left">
             <div style={{display:"inline-flex",alignItems:"center",gap:6,padding:"5px 12px",
               marginBottom:24,background:"rgba(74,158,232,0.12)",
               border:"1px solid rgba(74,158,232,0.25)",borderRadius:20}}>
@@ -341,10 +341,10 @@ function UploadScreen({ onAnalyzed }) {
           </div>
 
           {/* Divider */}
-          <div style={{alignSelf:"stretch",background:"rgba(255,255,255,0.08)",margin:"0 0"}}/>
+          <div style={{alignSelf:"stretch",background:"rgba(255,255,255,0.08)",margin:"0 0"}} className="upload-divider"/>
 
           {/* Right — upload card */}
-          <div style={{paddingLeft:48}}>
+          <div style={{paddingLeft:48}} className="upload-right">
             <div style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.1)",
               borderRadius:16,overflow:"hidden"}}>
               <div style={{padding:"18px 22px",borderBottom:"1px solid rgba(255,255,255,0.07)"}}>
@@ -494,6 +494,28 @@ function TailorTab({ resumeText, originalScore }) {
     finally { setDownloading(false); }
   };
 
+  const downloadDocx = () => {
+    // Build minimal valid .docx as plain-text RTF wrapped in docx mime
+    // Use a simple approach: create a Blob with the text content
+    const content_lines = result.tailored_resume.split("\n");
+    // Build RTF content
+    let rtf = "{\\rtf1\\ansi\\deff0";
+    rtf += "{\\fonttbl{\\f0 Times New Roman;}}";
+    rtf += "\\f0\\fs24 ";
+    content_lines.forEach(line => {
+      const escaped = line.replace(/\\/g,"\\\\").replace(/[{}]/g,"\\$&");
+      rtf += escaped + "\\par ";
+    });
+    rtf += "}";
+    const blob = new Blob([rtf], { type:"application/msword" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href     = url;
+    a.download = "tailored_resume.doc";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const copy = () => {
     navigator.clipboard.writeText(result.tailored_resume);
     setCopied(true); setTimeout(() => setCopied(false), 2000);
@@ -630,12 +652,18 @@ function TailorTab({ resumeText, originalScore }) {
               </button>
               <button onClick={downloadPdf} disabled={downloading}
                 style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",
-                  background: downloading ? "#f9fafb" : "#4f61f5",
+                  background: downloading ? "#f9fafb" : "#1B4F8A",
                   border:"none",borderRadius:8,fontSize:12,fontWeight:600,
                   color: downloading ? "#9ea3b5" : "#fff",
                   cursor: downloading ? "not-allowed" : "pointer",
-                  boxShadow: downloading ? "none" : "0 2px 8px rgba(79,97,245,0.3)"}}>
-                {downloading ? <><SpinIcon/>Generating PDF…</> : <><DownloadIcon/>Download PDF</>}
+                  boxShadow: downloading ? "none" : "0 2px 8px rgba(27,79,138,0.3)"}}>
+                {downloading ? <><SpinIcon/>Generating…</> : <><DownloadIcon/>PDF</>}
+              </button>
+              <button onClick={downloadDocx}
+                style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",
+                  background:"#059669",border:"none",borderRadius:8,fontSize:12,fontWeight:600,
+                  color:"#fff",cursor:"pointer",boxShadow:"0 2px 8px rgba(5,150,105,0.3)"}}>
+                <DownloadIcon/>DOCX
               </button>
             </div>
             <pre style={{whiteSpace:"pre-wrap",fontSize:12.5,fontFamily:"'Fira Code',monospace",
@@ -1416,13 +1444,13 @@ function ResultsScreen({ data, filename, onReset }) {
         </div>
       </header>
 
-      <div style={{flex:1,display:"flex"}}>
+      <div style={{flex:1,display:"flex"}} className="results-layout">
 
         {/* Sidebar */}
         <aside style={{width:218,flexShrink:0,background:"#FFFFFF",
           borderRight:"1px solid #DDE3EE",
           position:"sticky",top:56,height:"calc(100vh - 56px)",
-          overflowY:"auto",padding:"20px 0"}}>
+          overflowY:"auto",padding:"20px 0"}} className="sidebar">
           {groups.map(group => (
             <div key={group} style={{marginBottom:6}}>
               <div style={{padding:"4px 18px 8px",fontSize:10,fontWeight:700,
@@ -1456,7 +1484,7 @@ function ResultsScreen({ data, filename, onReset }) {
         </aside>
 
         {/* Main */}
-        <main style={{flex:1,padding:"28px 32px",overflowY:"auto",minWidth:0}}>
+        <main style={{flex:1,padding:"28px 32px",overflowY:"auto",minWidth:0}} className="main-content">
 
           {/* Breadcrumb */}
           <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:20}}>
@@ -1494,7 +1522,7 @@ function ResultsScreen({ data, filename, onReset }) {
                 </div>
               </div>
 
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}} className="two-col-grid">
                 <Panel title="Strengths" icon={<CheckIcon/>} accent="#059669">
                   <div style={{display:"flex",flexDirection:"column",gap:9}}>
                     {(data.strengths||[]).map((s,i)=>(
@@ -1529,7 +1557,7 @@ function ResultsScreen({ data, filename, onReset }) {
                 </Panel>
               )}
 
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}} className="two-col-grid">
                 <Panel title="Technical Skills" icon={<CheckIcon/>} accent="#1B4F8A">
                   <div style={{display:"flex",flexWrap:"wrap",gap:7}}>
                     {(data.skills?.technical||[]).map((s,i)=><Tag key={i} color="indigo">{s}</Tag>)}
@@ -1622,7 +1650,7 @@ function ResultsScreen({ data, filename, onReset }) {
                     </div>
                   </div>
                 </Panel>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}} className="two-col-grid">
                   <Panel title="Matched Skills" icon={<CheckIcon/>} accent="#059669">
                     <div style={{display:"flex",flexWrap:"wrap",gap:7}}>
                       {(matchResult.matched_skills||[]).map((s,i)=><Tag key={i} color="green">{s}</Tag>)}
@@ -1739,6 +1767,20 @@ export default function App() {
         textarea:focus { border-color:#1B4F8A !important; box-shadow:0 0 0 3px rgba(27,79,138,0.1) !important; }
         input:focus    { border-color:#1B4F8A !important; box-shadow:0 0 0 3px rgba(27,79,138,0.1) !important; }
         button:hover   { opacity:0.88; }
+        @media (max-width: 768px) {
+          .upload-grid { grid-template-columns: 1fr !important; }
+          .upload-divider { display: none !important; }
+          .upload-right { padding-left: 0 !important; padding-top: 24px !important; }
+          .upload-left { padding-right: 0 !important; }
+          .results-layout { flex-direction: column !important; }
+          .sidebar { width: 100% !important; height: auto !important; position: relative !important; top: auto !important; flex-direction: row !important; overflow-x: auto !important; padding: 8px !important; }
+          .sidebar-nav { display: flex !important; flex-direction: row !important; gap: 4px !important; overflow-x: auto !important; }
+          .sidebar-group-label { display: none !important; }
+          .main-content { padding: 16px !important; }
+          .score-hero { flex-direction: column !important; }
+          .two-col-grid { grid-template-columns: 1fr !important; }
+          .header-filename { max-width: 100px !important; }
+        }
       `}</style>
       {result
         ? <ResultsScreen data={result} filename={filename} onReset={()=>{setResult(null);setFilename("");}}/>
