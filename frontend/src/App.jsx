@@ -1408,14 +1408,15 @@ function ResultsScreen({ data, filename, onReset }) {
     outline:"none", lineHeight:1.65 };
 
   return (
-    <div style={{minHeight:"100vh",background:"#F4F6FB",fontFamily:"'Sora',sans-serif",display:"flex",flexDirection:"column"}}>
+    <div style={{minHeight:"100vh",background:"#F4F6FB",fontFamily:"'Sora',sans-serif",display:"flex",flexDirection:"column",overflowX:"hidden",width:"100%",maxWidth:"100vw"}}>
 
       {/* Top bar */}
       <header style={{background:"#0F1C2E",padding:"0 32px",height:56,
         display:"flex",alignItems:"center",justifyContent:"space-between",
         flexShrink:0,position:"sticky",top:0,zIndex:20,
         borderBottom:"1px solid rgba(255,255,255,0.08)",
-        boxShadow:"0 2px 12px rgba(0,0,0,0.3)"}}>
+        boxShadow:"0 2px 12px rgba(0,0,0,0.3)",
+        overflowX:"hidden",width:"100%",boxSizing:"border-box"}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           <div style={{width:30,height:30,background:"#1B4F8A",borderRadius:7,
             display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>⚡</div>
@@ -1514,7 +1515,7 @@ function ResultsScreen({ data, filename, onReset }) {
         )}
 
         {/* Main */}
-        <main style={{flex:1,padding: isMobile ? "16px" : "28px 32px",overflowY:"auto",minWidth:0}}>
+        <main style={{flex:1,padding: isMobile ? "16px" : "28px 32px",overflowY:"auto",minWidth:0,overflowX:"hidden",width:"100%",boxSizing:"border-box"}}>
 
           {/* Breadcrumb */}
           <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:20}}>
@@ -1531,7 +1532,7 @@ function ResultsScreen({ data, filename, onReset }) {
             {activeTab==="overview" && (<>
               {/* Score hero */}
               <div style={{background:"#0F1C2E",borderRadius:14,padding:28,
-                display:"flex",alignItems:"center",gap:32,flexWrap:"wrap"}}>
+                display:"flex",alignItems:"center",gap:32,flexWrap:"wrap",flexDirection: isMobile ? "column" : "row"}}>
                 <ScoreRing score={data.overall_score} color={scoreColor} size={130} light={true}/>
                 <div style={{flex:1,minWidth:220}}>
                   <div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.35)",
@@ -1552,7 +1553,7 @@ function ResultsScreen({ data, filename, onReset }) {
                 </div>
               </div>
 
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}} className="two-col-grid">
+              <div style={{display:"grid",gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",gap:14}}>
                 <Panel title="Strengths" icon={<CheckIcon/>} accent="#059669">
                   <div style={{display:"flex",flexDirection:"column",gap:9}}>
                     {(data.strengths||[]).map((s,i)=>(
@@ -1587,7 +1588,7 @@ function ResultsScreen({ data, filename, onReset }) {
                 </Panel>
               )}
 
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}} className="two-col-grid">
+              <div style={{display:"grid",gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",gap:14}}>
                 <Panel title="Technical Skills" icon={<CheckIcon/>} accent="#1B4F8A">
                   <div style={{display:"flex",flexWrap:"wrap",gap:7}}>
                     {(data.skills?.technical||[]).map((s,i)=><Tag key={i} color="indigo">{s}</Tag>)}
@@ -1680,7 +1681,7 @@ function ResultsScreen({ data, filename, onReset }) {
                     </div>
                   </div>
                 </Panel>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}} className="two-col-grid">
+                <div style={{display:"grid",gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",gap:14}}>
                   <Panel title="Matched Skills" icon={<CheckIcon/>} accent="#059669">
                     <div style={{display:"flex",flexWrap:"wrap",gap:7}}>
                       {(matchResult.matched_skills||[]).map((s,i)=><Tag key={i} color="green">{s}</Tag>)}
@@ -1790,6 +1791,7 @@ export default function App() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Fira+Code:wght@300;400;500&display=swap');
         * { box-sizing:border-box; margin:0; padding:0; }
+        html, body { overflow-x:hidden; max-width:100vw; }
         body { font-family:'Sora',sans-serif; background:#F4F6FB; }
         @keyframes spin { to { transform:rotate(360deg); } }
         ::-webkit-scrollbar { width:5px; }
