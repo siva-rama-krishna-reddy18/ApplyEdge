@@ -2,6 +2,13 @@ import { useState, useRef, useEffect } from "react";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
+// ── Shared feature config ─────────────────────────────────────────────────────
+// Change FEATURE_USER_ID to your real auth user id
+const FEATURE_USER_ID  = "user_123";
+const INTERVIEW_API    = `${API}/api/interview`;
+const TRACKER_API      = `${API}/api/applications`;
+const VERSIONS_API     = `${API}/api/versions`;
+
 // ── Icons ─────────────────────────────────────────────────────────────────────
 const UploadIcon = () => (
   <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -197,7 +204,6 @@ function Panel({ title, icon, accent="#1B4F8A", children, flush=false }) {
   );
 }
 
-// Card = alias for Panel (used by TailorTab, CoverLetterTab, InterviewTab, SavedJobsTab, JobsTab)
 function Card({ title, icon, children, accent="#1B4F8A" }) {
   return <Panel title={title} icon={icon} accent={accent}>{children}</Panel>;
 }
@@ -281,8 +287,6 @@ function UploadScreen({ onAnalyzed }) {
   return (
     <div style={{minHeight:"100vh",background:"#0F1C2E",fontFamily:"'Sora',sans-serif",
       display:"flex",flexDirection:"column"}}>
-
-      {/* Navbar */}
       <header style={{padding:"0 40px",height:58,display:"flex",alignItems:"center",
         justifyContent:"space-between",flexShrink:0,
         borderBottom:"1px solid rgba(255,255,255,0.07)"}}>
@@ -297,19 +301,15 @@ function UploadScreen({ onAnalyzed }) {
         <span style={{fontSize:12,color:"rgba(255,255,255,0.3)",letterSpacing:"0.02em"}}>AI-Powered Resume Intelligence</span>
       </header>
 
-      {/* Center content */}
       <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:"32px 24px"}}>
         <div style={{width:"100%",maxWidth:960,display:"grid",
-          gridTemplateColumns:"1fr 1px 400px",gap:0,alignItems:"center"}} className="upload-grid">
-
-          {/* Left — headline + features */}
-          <div style={{paddingRight:56}} className="upload-left">
+          gridTemplateColumns:"1fr 1px 400px",gap:0,alignItems:"center"}}>
+          <div style={{paddingRight:56}}>
             <div style={{display:"inline-flex",alignItems:"center",gap:6,padding:"5px 12px",
               marginBottom:24,background:"rgba(74,158,232,0.12)",
               border:"1px solid rgba(74,158,232,0.25)",borderRadius:20}}>
               <span style={{fontSize:11,color:"#7EB3F5",fontWeight:700,letterSpacing:"0.08em"}}>AI-POWERED RESUME TOOL</span>
             </div>
-
             <h1 style={{fontSize:42,fontWeight:800,color:"#FFFFFF",lineHeight:1.18,
               letterSpacing:"-0.03em",marginBottom:14}}>
               Land your next job<br/>
@@ -321,7 +321,6 @@ function UploadScreen({ onAnalyzed }) {
             <p style={{fontSize:15,color:"rgba(255,255,255,0.45)",lineHeight:1.75,marginBottom:36,maxWidth:440}}>
               Upload your resume and get instant AI analysis, ATS audit, job matching, tailored rewrites, cover letters, and interview prep.
             </p>
-
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px 24px"}}>
               {CAPABILITIES.map((cap,i) => (
                 <div key={i} style={{display:"flex",alignItems:"flex-start",gap:10}}>
@@ -339,19 +338,14 @@ function UploadScreen({ onAnalyzed }) {
               ))}
             </div>
           </div>
-
-          {/* Divider */}
-          <div style={{alignSelf:"stretch",background:"rgba(255,255,255,0.08)",margin:"0 0"}} className="upload-divider"/>
-
-          {/* Right — upload card */}
-          <div style={{paddingLeft:48}} className="upload-right">
+          <div style={{alignSelf:"stretch",background:"rgba(255,255,255,0.08)",margin:"0 0"}}/>
+          <div style={{paddingLeft:48}}>
             <div style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.1)",
               borderRadius:16,overflow:"hidden"}}>
               <div style={{padding:"18px 22px",borderBottom:"1px solid rgba(255,255,255,0.07)"}}>
                 <div style={{fontSize:15,fontWeight:700,color:"#FFFFFF"}}>Analyze Your Resume</div>
                 <div style={{fontSize:12,color:"rgba(255,255,255,0.35)",marginTop:3}}>PDF or TXT · Free · No account needed</div>
               </div>
-
               <div style={{padding:22}}>
                 {!loading ? (
                   <div
@@ -417,7 +411,6 @@ function UploadScreen({ onAnalyzed }) {
                 )}
               </div>
             </div>
-
             <div style={{marginTop:16,display:"flex",justifyContent:"center",gap:20}}>
               {["ATS Optimized","AI Powered","Instant Results"].map((t,i) => (
                 <div key={i} style={{display:"flex",alignItems:"center",gap:5}}>
@@ -427,14 +420,13 @@ function UploadScreen({ onAnalyzed }) {
               ))}
             </div>
           </div>
-
         </div>
       </div>
     </div>
   );
 }
 
-// ── Tab Components (preserved) ────────────────────────────────────────────────
+// ── TailorTab ─────────────────────────────────────────────────────────────────
 function TailorTab({ resumeText, originalScore }) {
   const [jobDesc, setJobDesc]     = useState("");
   const [result, setResult]       = useState(null);
@@ -455,7 +447,6 @@ function TailorTab({ resumeText, originalScore }) {
       const d = await r.json();
       if (!r.ok) throw new Error(d.detail);
       setResult(d);
-      // Auto-run score comparison
       scoreTailored(d.tailored_resume);
     } catch(e) { alert(e.message); }
     finally { setLoading(false); }
@@ -470,7 +461,7 @@ function TailorTab({ resumeText, originalScore }) {
       const r = await fetch(`${API}/analyze`, { method: "POST", body: form });
       const d = await r.json();
       if (r.ok) setTailoredScore(d.overall_score);
-    } catch(e) { /* silently fail */ }
+    } catch(e) {}
     finally { setScoringLoading(false); }
   };
 
@@ -478,42 +469,17 @@ function TailorTab({ resumeText, originalScore }) {
     setDownloading(true);
     try {
       const r = await fetch(`${API}/download-resume`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ resume_text: result.tailored_resume, filename: "tailored_resume" }),
       });
       if (!r.ok) throw new Error("PDF generation failed");
       const blob = await r.blob();
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement("a");
-      a.href     = url;
-      a.download = "tailored_resume.pdf";
-      a.click();
+      a.href = url; a.download = "tailored_resume.pdf"; a.click();
       URL.revokeObjectURL(url);
     } catch(e) { alert(e.message); }
     finally { setDownloading(false); }
-  };
-
-  const downloadDocx = () => {
-    // Build minimal valid .docx as plain-text RTF wrapped in docx mime
-    // Use a simple approach: create a Blob with the text content
-    const content_lines = result.tailored_resume.split("\n");
-    // Build RTF content
-    let rtf = "{\\rtf1\\ansi\\deff0";
-    rtf += "{\\fonttbl{\\f0 Times New Roman;}}";
-    rtf += "\\f0\\fs24 ";
-    content_lines.forEach(line => {
-      const escaped = line.replace(/\\/g,"\\\\").replace(/[{}]/g,"\\$&");
-      rtf += escaped + "\\par ";
-    });
-    rtf += "}";
-    const blob = new Blob([rtf], { type:"application/msword" });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement("a");
-    a.href     = url;
-    a.download = "tailored_resume.doc";
-    a.click();
-    URL.revokeObjectURL(url);
   };
 
   const copy = () => {
@@ -525,8 +491,7 @@ function TailorTab({ resumeText, originalScore }) {
     <div style={{display:"flex",flexDirection:"column",gap:16}}>
       <Card title="Auto-Tailor Resume for a Job" icon={<WandIcon/>} accent="#7c3aed">
         <p style={{fontSize:13,color:"#6b7280",marginBottom:12,lineHeight:1.6}}>
-          Paste a job description and AI will rewrite your resume to maximize match —
-          reordering bullet points, adding keywords, and strengthening impact statements.
+          Paste a job description and AI will rewrite your resume to maximize match.
         </p>
         <textarea placeholder="Paste job description here…"
           value={jobDesc} onChange={e=>setJobDesc(e.target.value)}
@@ -545,7 +510,6 @@ function TailorTab({ resumeText, originalScore }) {
 
       {result && (
         <>
-          {/* Improvement summary */}
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
             <Card title="Changes Made" icon={<CheckIcon/>} accent="#059669">
               <div style={{display:"flex",flexDirection:"column",gap:7}}>
@@ -576,7 +540,6 @@ function TailorTab({ resumeText, originalScore }) {
             </Card>
           </div>
 
-          {/* Score comparison */}
           {(tailoredScore !== null || scoringLoading) && (
             <div style={{background:"#fff",border:"1px solid #e3e6ef",borderRadius:14,
               padding:20,boxShadow:"0 1px 4px rgba(0,0,0,0.06)"}}>
@@ -585,20 +548,15 @@ function TailorTab({ resumeText, originalScore }) {
                 <span>📊</span> Score Comparison
               </div>
               <div style={{display:"flex",alignItems:"center",gap:0,justifyContent:"center"}}>
-                {/* Before */}
                 <div style={{textAlign:"center",flex:1}}>
                   <div style={{fontSize:11,fontWeight:600,color:"#9ea3b5",textTransform:"uppercase",
                     letterSpacing:"0.08em",marginBottom:8}}>Before</div>
                   <div style={{fontSize:48,fontWeight:800,
-                    color: originalScore>=80?"#059669":originalScore>=60?"#4f61f5":originalScore>=40?"#d97706":"#dc2626",
-                    lineHeight:1}}>
-                    {originalScore}
-                  </div>
+                    color:originalScore>=80?"#059669":originalScore>=60?"#4f61f5":originalScore>=40?"#d97706":"#dc2626",
+                    lineHeight:1}}>{originalScore}</div>
                   <div style={{fontSize:11,color:"#9ea3b5",marginTop:4}}>/ 100</div>
                 </div>
-                {/* Arrow */}
                 <div style={{fontSize:28,color:"#e3e6ef",margin:"0 8px",paddingBottom:8}}>→</div>
-                {/* After */}
                 <div style={{textAlign:"center",flex:1}}>
                   <div style={{fontSize:11,fontWeight:600,color:"#9ea3b5",textTransform:"uppercase",
                     letterSpacing:"0.08em",marginBottom:8}}>After</div>
@@ -607,20 +565,12 @@ function TailorTab({ resumeText, originalScore }) {
                   ) : (
                     <>
                       <div style={{fontSize:48,fontWeight:800,
-                        color: tailoredScore>=80?"#059669":tailoredScore>=60?"#4f61f5":tailoredScore>=40?"#d97706":"#dc2626",
-                        lineHeight:1}}>
-                        {tailoredScore}
-                      </div>
+                        color:tailoredScore>=80?"#059669":tailoredScore>=60?"#4f61f5":tailoredScore>=40?"#d97706":"#dc2626",
+                        lineHeight:1}}>{tailoredScore}</div>
                       <div style={{fontSize:11,color:"#9ea3b5",marginTop:4}}>/ 100</div>
                     </>
                   )}
                 </div>
-                {/* Delta badge */}
-                {tailoredScore !== null && !scoringLoading && (
-                  <div style={{position:"absolute",left:"50%",transform:"translateX(-50%)",
-                    marginTop:0}}>
-                  </div>
-                )}
               </div>
               {tailoredScore !== null && !scoringLoading && (() => {
                 const delta = tailoredScore - originalScore;
@@ -629,8 +579,7 @@ function TailorTab({ resumeText, originalScore }) {
                 return (
                   <div style={{textAlign:"center",marginTop:12}}>
                     <span style={{padding:"4px 16px",borderRadius:20,fontSize:13,fontWeight:700,
-                      background: delta>0?"#ecfdf5":delta<0?"#fef2f2":"#f3f4f6",
-                      color}}>
+                      background:delta>0?"#ecfdf5":delta<0?"#fef2f2":"#f3f4f6",color}}>
                       {delta > 0 ? "📈" : delta < 0 ? "📉" : "➡️"} {label}
                     </span>
                   </div>
@@ -639,31 +588,24 @@ function TailorTab({ resumeText, originalScore }) {
             </div>
           )}
 
-          {/* Tailored resume */}
           <Card title="Your Tailored Resume" icon={<FileIcon/>} accent="#7c3aed">
             <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginBottom:10}}>
               <button onClick={copy}
                 style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",
-                  background: copied ? "#ecfdf5" : "#f5f3ff",
-                  border:`1px solid ${copied ? "rgba(5,150,105,0.3)" : "rgba(124,58,237,0.2)"}`,
+                  background:copied?"#ecfdf5":"#f5f3ff",
+                  border:`1px solid ${copied?"rgba(5,150,105,0.3)":"rgba(124,58,237,0.2)"}`,
                   borderRadius:8,fontSize:12,fontWeight:600,
-                  color: copied ? "#059669" : "#7c3aed",cursor:"pointer"}}>
-                <CopyIcon/>{copied ? "Copied!" : "Copy Text"}
+                  color:copied?"#059669":"#7c3aed",cursor:"pointer"}}>
+                <CopyIcon/>{copied?"Copied!":"Copy Text"}
               </button>
               <button onClick={downloadPdf} disabled={downloading}
                 style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",
-                  background: downloading ? "#f9fafb" : "#1B4F8A",
+                  background:downloading?"#f9fafb":"#4f61f5",
                   border:"none",borderRadius:8,fontSize:12,fontWeight:600,
-                  color: downloading ? "#9ea3b5" : "#fff",
-                  cursor: downloading ? "not-allowed" : "pointer",
-                  boxShadow: downloading ? "none" : "0 2px 8px rgba(27,79,138,0.3)"}}>
-                {downloading ? <><SpinIcon/>Generating…</> : <><DownloadIcon/>PDF</>}
-              </button>
-              <button onClick={downloadDocx}
-                style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",
-                  background:"#059669",border:"none",borderRadius:8,fontSize:12,fontWeight:600,
-                  color:"#fff",cursor:"pointer",boxShadow:"0 2px 8px rgba(5,150,105,0.3)"}}>
-                <DownloadIcon/>DOCX
+                  color:downloading?"#9ea3b5":"#fff",
+                  cursor:downloading?"not-allowed":"pointer",
+                  boxShadow:downloading?"none":"0 2px 8px rgba(79,97,245,0.3)"}}>
+                {downloading?<><SpinIcon/>Generating PDF…</>:<><DownloadIcon/>Download PDF</>}
               </button>
             </div>
             <pre style={{whiteSpace:"pre-wrap",fontSize:12.5,fontFamily:"'Fira Code',monospace",
@@ -678,8 +620,7 @@ function TailorTab({ resumeText, originalScore }) {
   );
 }
 
-
-// ── Cover Letter Tab ──────────────────────────────────────────────────────────
+// ── CoverLetterTab ────────────────────────────────────────────────────────────
 function CoverLetterTab({ resumeText }) {
   const [jobDesc, setJobDesc]   = useState("");
   const [tone, setTone]         = useState("professional");
@@ -717,59 +658,48 @@ function CoverLetterTab({ resumeText }) {
     <div style={{display:"flex",flexDirection:"column",gap:16}}>
       <Card title="Cover Letter Generator" icon={<FileIcon/>} accent="#0891b2">
         <p style={{fontSize:13,color:"#6b7280",marginBottom:14,lineHeight:1.6}}>
-          Generate a personalized cover letter tailored to the job description,
-          using your actual resume achievements and metrics.
+          Generate a personalized cover letter tailored to the job description.
         </p>
-
-        {/* Tone selector */}
         <div style={{marginBottom:14}}>
           <div style={{fontSize:12,fontWeight:600,color:"#374151",marginBottom:8}}>Tone</div>
           <div style={{display:"flex",gap:8}}>
             {TONES.map(t => (
               <button key={t.value} onClick={() => setTone(t.value)}
                 style={{flex:1,padding:"8px 12px",borderRadius:9,
-                  border: tone===t.value ? "2px solid #0891b2" : "1.5px solid #e3e6ef",
-                  background: tone===t.value ? "#ecfeff" : "#fff",
-                  cursor:"pointer",transition:"all 0.15s"}}>
-                <div style={{fontSize:12,fontWeight:700,
-                  color: tone===t.value ? "#0891b2" : "#374151"}}>{t.label}</div>
+                  border:tone===t.value?"2px solid #0891b2":"1.5px solid #e3e6ef",
+                  background:tone===t.value?"#ecfeff":"#fff",cursor:"pointer"}}>
+                <div style={{fontSize:12,fontWeight:700,color:tone===t.value?"#0891b2":"#374151"}}>{t.label}</div>
                 <div style={{fontSize:11,color:"#9ea3b5",marginTop:2}}>{t.desc}</div>
               </button>
             ))}
           </div>
         </div>
-
         <textarea placeholder="Paste job description here…"
           value={jobDesc} onChange={e=>setJobDesc(e.target.value)}
           style={{width:"100%",height:160,padding:"12px 14px",border:"1.5px solid #e3e6ef",
-            borderRadius:10,resize:"vertical",fontSize:13,
-            fontFamily:"'Plus Jakarta Sans',sans-serif",color:"#374151",
-            outline:"none",lineHeight:1.6,background:"#f9fafb"}}/>
-
+            borderRadius:10,resize:"vertical",fontSize:13,fontFamily:"'Plus Jakarta Sans',sans-serif",
+            color:"#374151",outline:"none",lineHeight:1.6,background:"#f9fafb"}}/>
         <button onClick={run} disabled={!jobDesc.trim()||loading}
           style={{marginTop:12,padding:"10px 24px",background:"#0891b2",color:"#fff",
             border:"none",borderRadius:9,fontSize:14,fontWeight:600,cursor:"pointer",
             display:"flex",alignItems:"center",gap:8,
             opacity:(!jobDesc.trim()||loading)?0.5:1,
             boxShadow:"0 3px 12px rgba(8,145,178,0.3)"}}>
-          {loading ? <><SpinIcon/>Generating cover letter…</> : <><FileIcon/>Generate Cover Letter</>}
+          {loading?<><SpinIcon/>Generating cover letter…</>:<><FileIcon/>Generate Cover Letter</>}
         </button>
       </Card>
 
       {result && (
         <>
-          {/* Meta info */}
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
             <Card title="Application Details" icon={<BriefcaseIcon/>} accent="#0891b2">
               <div style={{display:"flex",flexDirection:"column",gap:8}}>
                 <div>
-                  <div style={{fontSize:11,fontWeight:600,color:"#9ea3b5",
-                    textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:3}}>Role</div>
+                  <div style={{fontSize:11,fontWeight:600,color:"#9ea3b5",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:3}}>Role</div>
                   <div style={{fontSize:13,fontWeight:600,color:"#1a1d2e"}}>{result.job_title}</div>
                 </div>
                 <div>
-                  <div style={{fontSize:11,fontWeight:600,color:"#9ea3b5",
-                    textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:3}}>Company</div>
+                  <div style={{fontSize:11,fontWeight:600,color:"#9ea3b5",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:3}}>Company</div>
                   <div style={{fontSize:13,fontWeight:600,color:"#1a1d2e"}}>{result.company_name}</div>
                 </div>
               </div>
@@ -787,8 +717,6 @@ function CoverLetterTab({ resumeText }) {
               </button>
             </Card>
           </div>
-
-          {/* Key requirements matched */}
           {result.key_requirements?.length > 0 && (
             <Card title="Key Requirements Addressed" icon={<CheckIcon/>} accent="#059669">
               <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
@@ -800,21 +728,18 @@ function CoverLetterTab({ resumeText }) {
               </div>
             </Card>
           )}
-
-          {/* Cover letter body */}
           <Card title="Your Cover Letter" icon={<FileIcon/>} accent="#0891b2">
             <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginBottom:12}}>
               <button onClick={() => copy(result.cover_letter)}
                 style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",
-                  background: copied ? "#ecfdf5" : "#ecfeff",
-                  border:`1px solid ${copied ? "rgba(5,150,105,0.3)" : "rgba(8,145,178,0.2)"}`,
+                  background:copied?"#ecfdf5":"#ecfeff",
+                  border:`1px solid ${copied?"rgba(5,150,105,0.3)":"rgba(8,145,178,0.2)"}`,
                   borderRadius:8,fontSize:12,fontWeight:600,
-                  color: copied ? "#059669" : "#0891b2",cursor:"pointer"}}>
-                <CopyIcon/>{copied ? "Copied!" : "Copy Letter"}
+                  color:copied?"#059669":"#0891b2",cursor:"pointer"}}>
+                <CopyIcon/>{copied?"Copied!":"Copy Letter"}
               </button>
             </div>
-            <div style={{whiteSpace:"pre-wrap",fontSize:13.5,
-              fontFamily:"'Plus Jakarta Sans',sans-serif",
+            <div style={{whiteSpace:"pre-wrap",fontSize:13.5,fontFamily:"'Plus Jakarta Sans',sans-serif",
               color:"#1a1d2e",lineHeight:1.9,background:"#f9fafb",padding:20,
               borderRadius:10,border:"1px solid #e3e6ef"}}>
               {result.cover_letter}
@@ -826,8 +751,7 @@ function CoverLetterTab({ resumeText }) {
   );
 }
 
-
-// ── Interview Tab ─────────────────────────────────────────────────────────────
+// ── InterviewTab (Q&A generator — existing tab) ───────────────────────────────
 function InterviewTab({ resumeText }) {
   const [jobDesc, setJobDesc]   = useState("");
   const [result, setResult]     = useState(null);
@@ -860,8 +784,7 @@ function InterviewTab({ resumeText }) {
     <div style={{display:"flex",flexDirection:"column",gap:16}}>
       <Card title="Interview Prep — Q&A Generator" icon={<MicIcon/>} accent="#0891b2">
         <p style={{fontSize:13,color:"#6b7280",marginBottom:12,lineHeight:1.6}}>
-          Paste the job description and get 10 likely interview questions with
-          personalized ideal answers based on YOUR resume — behavioral, technical, and situational.
+          Paste the job description and get 10 likely interview questions with personalized ideal answers.
         </p>
         <textarea placeholder="Paste job description here…"
           value={jobDesc} onChange={e=>setJobDesc(e.target.value)}
@@ -874,7 +797,7 @@ function InterviewTab({ resumeText }) {
             display:"flex",alignItems:"center",gap:8,
             opacity:(!jobDesc.trim()||loading)?0.5:1,
             boxShadow:"0 3px 12px rgba(8,145,178,0.3)"}}>
-          {loading ? <><SpinIcon/>Generating questions…</> : <><MicIcon/>Generate Interview Q&A</>}
+          {loading?<><SpinIcon/>Generating questions…</>:<><MicIcon/>Generate Interview Q&A</>}
         </button>
       </Card>
 
@@ -903,7 +826,6 @@ function InterviewTab({ resumeText }) {
               </div>
             </Card>
           </div>
-
           <Card title={`10 Interview Questions — ${result.role || "Role"}`} icon={<MicIcon/>} accent="#0891b2">
             <div style={{display:"flex",flexDirection:"column",gap:8}}>
               {result.questions?.map((q, i) => {
@@ -911,40 +833,26 @@ function InterviewTab({ resumeText }) {
                 const isOpen = openIdx === i;
                 return (
                   <div key={i} style={{border:"1px solid #e3e6ef",borderRadius:10,overflow:"hidden",
-                    transition:"border-color .15s",
-                    ...(isOpen ? {borderColor:"#0891b2"} : {})}}>
-                    {/* Question row */}
-                    <button onClick={() => setOpenIdx(isOpen ? null : i)}
-                      style={{width:"100%",padding:"13px 16px",background: isOpen ? "#ecfeff" : "#fff",
+                    ...(isOpen?{borderColor:"#0891b2"}:{})}}>
+                    <button onClick={() => setOpenIdx(isOpen?null:i)}
+                      style={{width:"100%",padding:"13px 16px",background:isOpen?"#ecfeff":"#fff",
                         border:"none",cursor:"pointer",display:"flex",alignItems:"center",
-                        gap:10,textAlign:"left",transition:"background .15s"}}>
+                        gap:10,textAlign:"left"}}>
                       <span style={{width:24,height:24,borderRadius:7,background:"#0891b2",
                         display:"flex",alignItems:"center",justifyContent:"center",
-                        color:"#fff",fontSize:11,fontWeight:700,flexShrink:0}}>
-                        {i+1}
-                      </span>
-                      <span style={{flex:1,fontSize:13.5,fontWeight:600,color:"#1a1d2e",lineHeight:1.4}}>
-                        {q.question}
-                      </span>
+                        color:"#fff",fontSize:11,fontWeight:700,flexShrink:0}}>{i+1}</span>
+                      <span style={{flex:1,fontSize:13.5,fontWeight:600,color:"#1a1d2e",lineHeight:1.4}}>{q.question}</span>
                       <span style={{padding:"2px 8px",borderRadius:20,fontSize:10,fontWeight:600,
                         background:cc.bg,color:cc.text,border:`1px solid ${cc.border}`,
-                        whiteSpace:"nowrap",flexShrink:0}}>
-                        {q.category}
-                      </span>
+                        whiteSpace:"nowrap",flexShrink:0}}>{q.category}</span>
                       <span style={{color:"#9ea3b5",flexShrink:0,
-                        transform: isOpen ? "rotate(180deg)" : "rotate(0)",
-                        transition:"transform .2s"}}><ChevronDown/></span>
+                        transform:isOpen?"rotate(180deg)":"rotate(0)",transition:"transform .2s"}}><ChevronDown/></span>
                     </button>
-                    {/* Answer */}
                     {isOpen && (
                       <div style={{padding:"14px 16px",borderTop:"1px solid #e3e6ef",background:"#fafbff"}}>
                         <div style={{fontSize:11,fontWeight:700,color:"#0891b2",
-                          fontFamily:"'Fira Code',monospace",letterSpacing:"0.08em",marginBottom:8}}>
-                          IDEAL ANSWER
-                        </div>
-                        <p style={{fontSize:13,color:"#374151",lineHeight:1.75,marginBottom:10}}>
-                          {q.ideal_answer}
-                        </p>
+                          fontFamily:"'Fira Code',monospace",letterSpacing:"0.08em",marginBottom:8}}>IDEAL ANSWER</div>
+                        <p style={{fontSize:13,color:"#374151",lineHeight:1.75,marginBottom:10}}>{q.ideal_answer}</p>
                         <div style={{display:"flex",gap:7,padding:"9px 12px",background:"#fffbeb",
                           border:"1px solid rgba(217,119,6,0.2)",borderRadius:8,alignItems:"flex-start"}}>
                           <span style={{fontSize:14}}>💡</span>
@@ -963,8 +871,7 @@ function InterviewTab({ resumeText }) {
   );
 }
 
-
-// ── Saved Jobs Tab ────────────────────────────────────────────────────────────
+// ── SavedJobsTab ──────────────────────────────────────────────────────────────
 function SavedJobsTab({ savedJobs, unsaveJob }) {
   const fmtSalary = (min, max) => {
     if (!min && !max) return null;
@@ -987,12 +894,9 @@ function SavedJobsTab({ savedJobs, unsaveJob }) {
 
   return (
     <div style={{display:"flex",flexDirection:"column",gap:16}}>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-        <span style={{fontSize:13,color:"#6b7280",fontFamily:"'Fira Code',monospace"}}>
-          {savedJobs.length} saved job{savedJobs.length !== 1 ? "s" : ""}
-        </span>
-      </div>
-
+      <span style={{fontSize:13,color:"#6b7280",fontFamily:"'Fira Code',monospace"}}>
+        {savedJobs.length} saved job{savedJobs.length !== 1 ? "s" : ""}
+      </span>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(380px,1fr))",gap:12}}>
         {savedJobs.map((job, i) => {
           const salary = fmtSalary(job.salary_min, job.salary_max);
@@ -1002,13 +906,10 @@ function SavedJobsTab({ savedJobs, unsaveJob }) {
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
                 <div style={{flex:1,minWidth:0}}>
                   <h3 style={{fontSize:14,fontWeight:700,color:"#1a1d2e",marginBottom:4,
-                    lineHeight:1.3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                    {job.title}
-                  </h3>
+                    lineHeight:1.3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{job.title}</h3>
                   <p style={{fontSize:13,fontWeight:500,color:"#4f61f5"}}>{job.company}</p>
                 </div>
                 <button onClick={()=>unsaveJob(job.id)}
-                  title="Remove bookmark"
                   style={{background:"#fef2f2",border:"1px solid rgba(220,38,38,0.15)",
                     borderRadius:7,padding:"5px 8px",cursor:"pointer",
                     color:"#dc2626",flexShrink:0,marginLeft:8,display:"flex",alignItems:"center",gap:4,
@@ -1016,26 +917,14 @@ function SavedJobsTab({ savedJobs, unsaveJob }) {
                   <BookmarkIcon filled={true}/> Remove
                 </button>
               </div>
-
               <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:10}}>
-                {job.location && (
-                  <span style={{display:"flex",alignItems:"center",gap:4,fontSize:12,color:"#6b7280"}}>
-                    <MapPinIcon/>{job.location}
-                  </span>
-                )}
-                {salary && (
-                  <span style={{display:"flex",alignItems:"center",gap:4,
-                    fontSize:12,color:"#059669",fontWeight:600}}>
-                    <DollarIcon/>{salary}
-                  </span>
-                )}
+                {job.location && <span style={{display:"flex",alignItems:"center",gap:4,fontSize:12,color:"#6b7280"}}><MapPinIcon/>{job.location}</span>}
+                {salary && <span style={{display:"flex",alignItems:"center",gap:4,fontSize:12,color:"#059669",fontWeight:600}}><DollarIcon/>{salary}</span>}
               </div>
-
               <p style={{fontSize:12,color:"#6b7280",lineHeight:1.6,marginBottom:12,
                 display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical",overflow:"hidden"}}>
                 {job.description}
               </p>
-
               <a href={job.url} target="_blank" rel="noopener noreferrer"
                 style={{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 16px",
                   background:"#4f61f5",color:"#fff",borderRadius:8,fontSize:13,fontWeight:600,
@@ -1050,7 +939,7 @@ function SavedJobsTab({ savedJobs, unsaveJob }) {
   );
 }
 
-// ── Jobs Tab ──────────────────────────────────────────────────────────────────
+// ── JobsTab ───────────────────────────────────────────────────────────────────
 function JobsTab({ resumeSkills = [], savedJobs = [], saveJob, unsaveJob, isJobSaved }) {
   const suggestedKeyword = resumeSkills.slice(0, 2).join(" ") || "";
   const [keywords, setKeywords]   = useState(suggestedKeyword);
@@ -1112,7 +1001,6 @@ function JobsTab({ resumeSkills = [], savedJobs = [], saveJob, unsaveJob, isJobS
     padding:"9px 12px", border:"1.5px solid #e3e6ef", borderRadius:8,
     fontSize:13, fontFamily:"'Plus Jakarta Sans',sans-serif",
     color:"#374151", outline:"none", background:"#fff",
-    transition:"border-color .15s",
   };
   const selectStyle = { ...inputStyle, cursor:"pointer", appearance:"none",
     backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ea3b5' stroke-width='2.5' stroke-linecap='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
@@ -1121,24 +1009,17 @@ function JobsTab({ resumeSkills = [], savedJobs = [], saveJob, unsaveJob, isJobS
 
   return (
     <div style={{display:"flex",flexDirection:"column",gap:16}}>
-
-      {/* Search Bar */}
-      <div style={{background:"#fff",border:"1px solid #e3e6ef",borderRadius:14,
-        padding:20,boxShadow:"0 1px 4px rgba(0,0,0,0.06)"}}>
-
+      <div style={{background:"#fff",border:"1px solid #e3e6ef",borderRadius:14,padding:20,boxShadow:"0 1px 4px rgba(0,0,0,0.06)"}}>
         {resumeSkills.length > 0 && (
           <div style={{marginBottom:12,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
             <span style={{fontSize:12,color:"#6b7280",fontFamily:"'Fira Code',monospace"}}>Suggested from resume:</span>
             {resumeSkills.slice(0,6).map((s,i) => (
               <button key={i} onClick={()=>setKeywords(s)}
                 style={{padding:"3px 10px",background:"#eef0fe",border:"1px solid rgba(79,97,245,0.2)",
-                  borderRadius:20,fontSize:12,color:"#4f61f5",cursor:"pointer",fontWeight:500}}>
-                {s}
-              </button>
+                  borderRadius:20,fontSize:12,color:"#4f61f5",cursor:"pointer",fontWeight:500}}>{s}</button>
             ))}
           </div>
         )}
-
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
           <div style={{position:"relative",display:"flex",alignItems:"center"}}>
             <span style={{position:"absolute",left:10,color:"#9ea3b5"}}><SearchIcon/></span>
@@ -1155,7 +1036,6 @@ function JobsTab({ resumeSkills = [], savedJobs = [], saveJob, unsaveJob, isJobS
               onKeyDown={e=>e.key==="Enter"&&search(1)}/>
           </div>
         </div>
-
         <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
           <select style={{...selectStyle,flex:1,minWidth:120}} value={country} onChange={e=>setCountry(e.target.value)}>
             {COUNTRIES.map(c=><option key={c.code} value={c.code}>{c.label}</option>)}
@@ -1174,14 +1054,12 @@ function JobsTab({ resumeSkills = [], savedJobs = [], saveJob, unsaveJob, isJobS
             style={{padding:"9px 20px",background:"#4f61f5",color:"#fff",border:"none",
               borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",
               display:"flex",alignItems:"center",gap:7,
-              boxShadow:"0 3px 12px rgba(79,97,245,0.3)",
-              opacity:loading?0.6:1,whiteSpace:"nowrap"}}>
-            {loading ? <><SpinIcon/>Searching…</> : <><SearchIcon/>Search Jobs</>}
+              boxShadow:"0 3px 12px rgba(79,97,245,0.3)",opacity:loading?0.6:1,whiteSpace:"nowrap"}}>
+            {loading?<><SpinIcon/>Searching…</>:<><SearchIcon/>Search Jobs</>}
           </button>
         </div>
       </div>
 
-      {/* Error */}
       {error && (
         <div style={{padding:"12px 16px",background:"#fef2f2",border:"1px solid rgba(220,38,38,0.2)",
           borderRadius:10,display:"flex",gap:8,alignItems:"center",color:"#dc2626",fontSize:13}}>
@@ -1189,7 +1067,6 @@ function JobsTab({ resumeSkills = [], savedJobs = [], saveJob, unsaveJob, isJobS
         </div>
       )}
 
-      {/* Results count */}
       {searched && !loading && (
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
           <span style={{fontSize:13,color:"#6b7280",fontFamily:"'Fira Code',monospace"}}>
@@ -1208,7 +1085,6 @@ function JobsTab({ resumeSkills = [], savedJobs = [], saveJob, unsaveJob, isJobS
         </div>
       )}
 
-      {/* Job Cards */}
       {jobs.length > 0 && (
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(380px,1fr))",gap:12}}>
           {jobs.map((job,i) => {
@@ -1216,79 +1092,38 @@ function JobsTab({ resumeSkills = [], savedJobs = [], saveJob, unsaveJob, isJobS
             return (
               <a key={i} href={job.url} target="_blank" rel="noopener noreferrer"
                 style={{textDecoration:"none",display:"block"}}>
-                <div style={{
-                  background:"#fff",border:"1px solid #e3e6ef",borderRadius:12,padding:18,
-                  boxShadow:"0 1px 4px rgba(0,0,0,0.05)",cursor:"pointer",
-                  transition:"border-color .15s, box-shadow .15s, transform .15s",
-                  height:"100%",
-                }}
+                <div style={{background:"#fff",border:"1px solid #e3e6ef",borderRadius:12,padding:18,
+                  boxShadow:"0 1px 4px rgba(0,0,0,0.05)",cursor:"pointer",height:"100%"}}
                   onMouseEnter={e=>{e.currentTarget.style.borderColor="#4f61f5";e.currentTarget.style.boxShadow="0 4px 16px rgba(79,97,245,0.12)";e.currentTarget.style.transform="translateY(-2px)";}}
                   onMouseLeave={e=>{e.currentTarget.style.borderColor="#e3e6ef";e.currentTarget.style.boxShadow="0 1px 4px rgba(0,0,0,0.05)";e.currentTarget.style.transform="translateY(0)";}}>
-
-                  {/* Header */}
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
                     <div style={{flex:1,minWidth:0}}>
                       <h3 style={{fontSize:14,fontWeight:700,color:"#1a1d2e",marginBottom:4,
-                        lineHeight:1.3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                        {job.title}
-                      </h3>
+                        lineHeight:1.3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{job.title}</h3>
                       <p style={{fontSize:13,fontWeight:500,color:"#4f61f5"}}>{job.company}</p>
                     </div>
                     <div style={{display:"flex",gap:6,flexShrink:0,marginLeft:8}}>
                       <button
                         onClick={e=>{e.preventDefault();e.stopPropagation();isJobSaved&&isJobSaved(job.id)?unsaveJob(job.id):saveJob&&saveJob(job);}}
-                        title={isJobSaved&&isJobSaved(job.id)?"Unsave job":"Save job"}
-                        style={{
-                          background: isJobSaved&&isJobSaved(job.id) ? "#eef0fe" : "#f9fafb",
-                          border:`1px solid ${isJobSaved&&isJobSaved(job.id) ? "rgba(79,97,245,0.3)" : "#e3e6ef"}`,
+                        style={{background:isJobSaved&&isJobSaved(job.id)?"#eef0fe":"#f9fafb",
+                          border:`1px solid ${isJobSaved&&isJobSaved(job.id)?"rgba(79,97,245,0.3)":"#e3e6ef"}`,
                           borderRadius:7,padding:"5px 7px",cursor:"pointer",
-                          color: isJobSaved&&isJobSaved(job.id) ? "#4f61f5" : "#9ea3b5",
-                          display:"flex",alignItems:"center",
-                        }}>
+                          color:isJobSaved&&isJobSaved(job.id)?"#4f61f5":"#9ea3b5",
+                          display:"flex",alignItems:"center"}}>
                         <BookmarkIcon filled={!!(isJobSaved&&isJobSaved(job.id))}/>
                       </button>
                       <span style={{color:"#9ea3b5",marginTop:2}}><ExternalIcon/></span>
                     </div>
                   </div>
-
-                  {/* Meta */}
                   <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:10}}>
-                    {job.location && (
-                      <span style={{display:"flex",alignItems:"center",gap:4,
-                        fontSize:12,color:"#6b7280"}}>
-                        <MapPinIcon/>{job.location}
-                      </span>
-                    )}
-                    {job.created && (
-                      <span style={{display:"flex",alignItems:"center",gap:4,fontSize:12,color:"#6b7280"}}>
-                        <ClockIcon/>{fmtDate(job.created)}
-                      </span>
-                    )}
-                    {salary && (
-                      <span style={{display:"flex",alignItems:"center",gap:4,fontSize:12,
-                        color:"#059669",fontWeight:600}}>
-                        <DollarIcon/>{salary}
-                      </span>
-                    )}
+                    {job.location && <span style={{display:"flex",alignItems:"center",gap:4,fontSize:12,color:"#6b7280"}}><MapPinIcon/>{job.location}</span>}
+                    {job.created && <span style={{display:"flex",alignItems:"center",gap:4,fontSize:12,color:"#6b7280"}}><ClockIcon/>{fmtDate(job.created)}</span>}
+                    {salary && <span style={{display:"flex",alignItems:"center",gap:4,fontSize:12,color:"#059669",fontWeight:600}}><DollarIcon/>{salary}</span>}
                   </div>
-
-                  {/* Badges */}
                   <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
-                    {job.category && (
-                      <span style={{padding:"2px 8px",background:"#eef0fe",color:"#4f61f5",
-                        borderRadius:20,fontSize:11,fontWeight:500}}>
-                        {job.category}
-                      </span>
-                    )}
-                    {job.contract && (
-                      <span style={{padding:"2px 8px",background:"#ecfdf5",color:"#059669",
-                        borderRadius:20,fontSize:11,fontWeight:500,textTransform:"capitalize"}}>
-                        {job.contract.replace("_"," ")}
-                      </span>
-                    )}
+                    {job.category && <span style={{padding:"2px 8px",background:"#eef0fe",color:"#4f61f5",borderRadius:20,fontSize:11,fontWeight:500}}>{job.category}</span>}
+                    {job.contract && <span style={{padding:"2px 8px",background:"#ecfdf5",color:"#059669",borderRadius:20,fontSize:11,fontWeight:500,textTransform:"capitalize"}}>{job.contract.replace("_"," ")}</span>}
                   </div>
-
-                  {/* Description */}
                   <p style={{fontSize:12,color:"#6b7280",lineHeight:1.6,
                     display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical",overflow:"hidden"}}>
                     {job.description}
@@ -1300,31 +1135,26 @@ function JobsTab({ resumeSkills = [], savedJobs = [], saveJob, unsaveJob, isJobS
         </div>
       )}
 
-      {/* Empty state */}
       {searched && jobs.length === 0 && !loading && !error && (
-        <div style={{textAlign:"center",padding:"48px 24px",background:"#fff",
-          borderRadius:14,border:"1px solid #e3e6ef"}}>
+        <div style={{textAlign:"center",padding:"48px 24px",background:"#fff",borderRadius:14,border:"1px solid #e3e6ef"}}>
           <div style={{fontSize:36,marginBottom:12}}>🔍</div>
           <p style={{fontSize:15,fontWeight:600,color:"#374151",marginBottom:6}}>No jobs found</p>
           <p style={{fontSize:13,color:"#9ea3b5"}}>Try different keywords or a broader location</p>
         </div>
       )}
 
-      {/* Load more */}
       {jobs.length > 0 && jobs.length < total && (
         <div style={{textAlign:"center"}}>
           <button onClick={()=>search(page+1)} disabled={loading}
             style={{padding:"10px 28px",background:"#fff",border:"1.5px solid #4f61f5",
-              color:"#4f61f5",borderRadius:9,fontSize:13,fontWeight:600,cursor:"pointer",
-              transition:"all .15s"}}>
+              color:"#4f61f5",borderRadius:9,fontSize:13,fontWeight:600,cursor:"pointer"}}>
             {loading ? "Loading…" : `Load more (${total - jobs.length} remaining)`}
           </button>
         </div>
       )}
 
       {!searched && (
-        <div style={{textAlign:"center",padding:"48px 24px",background:"#fff",
-          borderRadius:14,border:"2px dashed #e3e6ef"}}>
+        <div style={{textAlign:"center",padding:"48px 24px",background:"#fff",borderRadius:14,border:"2px dashed #e3e6ef"}}>
           <div style={{fontSize:36,marginBottom:12}}>💼</div>
           <p style={{fontSize:15,fontWeight:600,color:"#374151",marginBottom:6}}>Find Real Job Listings</p>
           <p style={{fontSize:13,color:"#9ea3b5",lineHeight:1.6}}>
@@ -1337,18 +1167,1013 @@ function JobsTab({ resumeSkills = [], savedJobs = [], saveJob, unsaveJob, isJobS
   );
 }
 
-// ── Results Screen ────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// NEW FEATURE: INTERVIEW SIMULATOR (with answer grading)
+// ═══════════════════════════════════════════════════════════════════════════════
 
+const SIM_COLORS = {
+  orange:"#FB923C", blue:"#3B82F6", green:"#16A34A",
+  red:"#DC2626", yellow:"#D97706", purple:"#7C3AED",
+  bg:"#F9FAFB", white:"#FFFFFF", dark:"#111827",
+  mid:"#6B7280", border:"#E5E7EB",
+};
+const SIM_VERDICT_COLOR = {
+  Excellent:SIM_COLORS.green, Good:SIM_COLORS.blue,
+  Average:SIM_COLORS.yellow, Poor:SIM_COLORS.red,
+};
+
+function SimProgressBar({ value, max, color = SIM_COLORS.orange }) {
+  return (
+    <div style={{background:SIM_COLORS.border,borderRadius:99,height:8,overflow:"hidden"}}>
+      <div style={{width:`${Math.min(100,(value/max)*100)}%`,background:color,height:"100%",
+        borderRadius:99,transition:"width .4s ease"}}/>
+    </div>
+  );
+}
+
+function SimScoreCircle({ score, size = 80 }) {
+  const color = score>=80?SIM_COLORS.green:score>=60?SIM_COLORS.yellow:SIM_COLORS.red;
+  return (
+    <div style={{width:size,height:size,borderRadius:"50%",
+      border:`4px solid ${color}`,display:"flex",
+      flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+      <span style={{fontSize:size*0.28,fontWeight:800,color}}>{score}</span>
+      <span style={{fontSize:size*0.14,color:SIM_COLORS.mid}}>/ 100</span>
+    </div>
+  );
+}
+
+function SimTag({ text, color = SIM_COLORS.blue }) {
+  return (
+    <span style={{background:color+"18",color,fontSize:11,fontWeight:600,
+      padding:"2px 8px",borderRadius:20}}>{text}</span>
+  );
+}
+
+function SimSetupScreen({ onStart }) {
+  const [form, setForm] = useState({
+    job_title:"", job_description:"", resume_text:"", num_questions:8,
+  });
+  const [loading, setLoading] = useState(false);
+
+  const handleStart = async () => {
+    if (!form.job_title||!form.job_description||!form.resume_text) {
+      alert("Please fill in all fields"); return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch(`${INTERVIEW_API}/start`, {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ user_id: FEATURE_USER_ID, ...form }),
+      });
+      const data = await res.json();
+      onStart(data);
+    } catch(e) { alert("Failed to start. Check your API connection."); }
+    setLoading(false);
+  };
+
+  const S = {
+    label:   {fontSize:12.5,fontWeight:600,color:SIM_COLORS.dark,display:"block",marginBottom:5},
+    input:   {width:"100%",border:`1px solid ${SIM_COLORS.border}`,borderRadius:8,
+               padding:"9px 12px",fontSize:13,boxSizing:"border-box",outline:"none",fontFamily:"inherit"},
+    textarea:{width:"100%",border:`1px solid ${SIM_COLORS.border}`,borderRadius:8,
+               padding:"9px 12px",fontSize:13,boxSizing:"border-box",outline:"none",
+               resize:"vertical",fontFamily:"inherit"},
+  };
+
+  return (
+    <div>
+      <p style={{color:SIM_COLORS.mid,fontSize:13,margin:"0 0 24px"}}>
+        Get AI-generated questions based on your resume + job, then get graded on every answer.
+      </p>
+      <div style={{display:"flex",flexDirection:"column",gap:16}}>
+        <div>
+          <label style={S.label}>Job Title *</label>
+          <input style={S.input} placeholder='e.g. "AI Engineer at Google"'
+            value={form.job_title} onChange={e=>setForm(p=>({...p,job_title:e.target.value}))}/>
+        </div>
+        <div>
+          <label style={S.label}>Job Description *</label>
+          <textarea style={S.textarea} rows={5}
+            placeholder="Paste the full job description here..."
+            value={form.job_description} onChange={e=>setForm(p=>({...p,job_description:e.target.value}))}/>
+        </div>
+        <div>
+          <label style={S.label}>Your Resume *</label>
+          <textarea style={S.textarea} rows={6}
+            placeholder="Paste your resume text here..."
+            value={form.resume_text} onChange={e=>setForm(p=>({...p,resume_text:e.target.value}))}/>
+        </div>
+        <div>
+          <label style={S.label}>Number of Questions</label>
+          <select style={{...S.input,width:"auto"}}
+            value={form.num_questions} onChange={e=>setForm(p=>({...p,num_questions:+e.target.value}))}>
+            {[5,8,10,12].map(n=><option key={n} value={n}>{n} questions</option>)}
+          </select>
+        </div>
+        <button onClick={handleStart} disabled={loading}
+          style={{background:loading?SIM_COLORS.border:"#FB923C",
+            color:loading?SIM_COLORS.mid:"#fff",border:"none",borderRadius:10,
+            padding:"12px 28px",fontSize:14,fontWeight:700,
+            cursor:loading?"not-allowed":"pointer",alignSelf:"flex-start"}}>
+          {loading?"Generating questions...":"Start Interview →"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SimQuestionScreen({ session, onComplete }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [answer, setAnswer]             = useState("");
+  const [grading, setGrading]           = useState(false);
+  const [grade, setGrade]               = useState(null);
+  const [allGrades, setAllGrades]       = useState([]);
+
+  const question = session.questions[currentIndex];
+  const total    = session.questions.length;
+
+  const handleGrade = async () => {
+    if (!answer.trim()) { alert("Please write an answer first"); return; }
+    setGrading(true);
+    try {
+      const res = await fetch(`${INTERVIEW_API}/grade`, {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          session_id: session.session_id,
+          user_id: FEATURE_USER_ID,
+          question_index: currentIndex,
+          answer,
+        }),
+      });
+      const data = await res.json();
+      setGrade(data.grade);
+      const updated = [...allGrades];
+      updated[currentIndex] = data.grade;
+      setAllGrades(updated);
+      if (data.session_complete) onComplete(data.overall_score, updated);
+    } catch(e) { alert("Grading failed. Try again."); }
+    setGrading(false);
+  };
+
+  const handleNext = () => {
+    if (currentIndex < total - 1) {
+      setCurrentIndex(i=>i+1); setAnswer(""); setGrade(null);
+    }
+  };
+
+  const typeColor = {
+    behavioral:SIM_COLORS.blue, technical:SIM_COLORS.purple,
+    situational:SIM_COLORS.orange, experience:SIM_COLORS.green,
+  };
+
+  return (
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+        <h3 style={{fontSize:15,fontWeight:700,margin:0}}>🎤 {session.job_title}</h3>
+        <span style={{fontSize:13,color:SIM_COLORS.mid}}>{currentIndex+1} / {total}</span>
+      </div>
+      <SimProgressBar value={currentIndex+1} max={total}/>
+      <div style={{height:16}}/>
+      <div style={{background:SIM_COLORS.white,border:`1px solid ${SIM_COLORS.border}`,
+        borderRadius:14,padding:20,marginBottom:16}}>
+        <div style={{display:"flex",gap:8,marginBottom:12}}>
+          <SimTag text={question.type} color={typeColor[question.type]||SIM_COLORS.blue}/>
+          <SimTag text={question.difficulty}
+            color={question.difficulty==="hard"?SIM_COLORS.red:
+                   question.difficulty==="easy"?SIM_COLORS.green:SIM_COLORS.yellow}/>
+        </div>
+        <p style={{fontSize:15,fontWeight:600,color:SIM_COLORS.dark,margin:0,lineHeight:1.5}}>
+          {question.question}
+        </p>
+      </div>
+
+      {!grade && (
+        <>
+          <textarea rows={7}
+            placeholder="Type your answer here... Be specific, use examples from your experience."
+            value={answer} onChange={e=>setAnswer(e.target.value)}
+            style={{width:"100%",border:`1.5px solid ${SIM_COLORS.border}`,borderRadius:10,
+              padding:"12px 14px",fontSize:13,boxSizing:"border-box",outline:"none",
+              resize:"vertical",fontFamily:"inherit",lineHeight:1.6}}/>
+          <div style={{marginTop:12}}>
+            <button onClick={handleGrade} disabled={grading}
+              style={{background:grading?SIM_COLORS.border:"#FB923C",
+                color:grading?SIM_COLORS.mid:"#fff",border:"none",borderRadius:8,
+                padding:"10px 24px",fontSize:13,fontWeight:700,cursor:grading?"not-allowed":"pointer"}}>
+              {grading?"Grading...":"Submit Answer →"}
+            </button>
+          </div>
+        </>
+      )}
+
+      {grade && (
+        <div style={{background:SIM_COLORS.white,border:`1px solid ${SIM_COLORS.border}`,borderRadius:14,padding:20}}>
+          <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:16}}>
+            <SimScoreCircle score={grade.score} size={70}/>
+            <div>
+              <span style={{fontSize:16,fontWeight:800,
+                color:SIM_VERDICT_COLOR[grade.verdict]||SIM_COLORS.blue}}>{grade.verdict}</span>
+              <p style={{margin:"4px 0 0",fontSize:12.5,color:SIM_COLORS.mid}}>💡 {grade.tip}</p>
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+            <div style={{background:"#F0FDF4",borderRadius:10,padding:12}}>
+              <p style={{fontSize:12,fontWeight:700,color:SIM_COLORS.green,margin:"0 0 6px"}}>✅ What was good</p>
+              {grade.strengths?.map((s,i)=>(
+                <p key={i} style={{fontSize:12,color:SIM_COLORS.dark,margin:"0 0 4px"}}>• {s}</p>
+              ))}
+            </div>
+            <div style={{background:"#FEF2F2",borderRadius:10,padding:12}}>
+              <p style={{fontSize:12,fontWeight:700,color:SIM_COLORS.red,margin:"0 0 6px"}}>⚠️ What was missing</p>
+              {grade.improvements?.map((s,i)=>(
+                <p key={i} style={{fontSize:12,color:SIM_COLORS.dark,margin:"0 0 4px"}}>• {s}</p>
+              ))}
+            </div>
+          </div>
+          <div style={{background:"#EFF6FF",borderRadius:10,padding:12,marginBottom:16}}>
+            <p style={{fontSize:12,fontWeight:700,color:SIM_COLORS.blue,margin:"0 0 6px"}}>🎯 Key points for ideal answer</p>
+            {grade.ideal_points?.map((s,i)=>(
+              <p key={i} style={{fontSize:12,color:SIM_COLORS.dark,margin:"0 0 4px"}}>• {s}</p>
+            ))}
+          </div>
+          {currentIndex < total-1 ? (
+            <button onClick={handleNext}
+              style={{background:"#FB923C",color:"#fff",border:"none",borderRadius:8,
+                padding:"10px 24px",fontSize:13,fontWeight:700,cursor:"pointer"}}>
+              Next Question →
+            </button>
+          ) : (
+            <button onClick={()=>onComplete(0,allGrades)}
+              style={{background:SIM_COLORS.green,color:"#fff",border:"none",borderRadius:8,
+                padding:"10px 24px",fontSize:13,fontWeight:700,cursor:"pointer"}}>
+              See Final Results →
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SimResultsScreen({ session, grades, overallScore, onRestart }) {
+  const avgScore = grades.filter(Boolean).length > 0
+    ? Math.round(grades.filter(Boolean).reduce((s,g)=>s+(g?.score||0),0)/grades.filter(Boolean).length)
+    : overallScore;
+  const color = avgScore>=80?SIM_COLORS.green:avgScore>=60?SIM_COLORS.yellow:SIM_COLORS.red;
+  const verdict = avgScore>=80?"Interview Ready! 🚀":avgScore>=60?"Almost There 💪":"Needs More Practice 📚";
+
+  return (
+    <div>
+      <div style={{background:SIM_COLORS.white,border:`1px solid ${SIM_COLORS.border}`,
+        borderRadius:14,padding:24,textAlign:"center",marginBottom:20}}>
+        <SimScoreCircle score={avgScore} size={100}/>
+        <h2 style={{fontSize:20,fontWeight:800,color,margin:"16px 0 4px"}}>{verdict}</h2>
+        <p style={{color:SIM_COLORS.mid,fontSize:13,margin:0}}>
+          {session.job_title} — {grades.filter(Boolean).length} questions answered
+        </p>
+      </div>
+      <h3 style={{fontSize:14,fontWeight:700,color:SIM_COLORS.dark,marginBottom:10}}>Question Breakdown</h3>
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        {session.questions.map((q,i) => {
+          const g = grades[i];
+          return (
+            <div key={i} style={{background:SIM_COLORS.white,border:`1px solid ${SIM_COLORS.border}`,
+              borderRadius:10,padding:14}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                <p style={{fontSize:13,fontWeight:600,color:SIM_COLORS.dark,margin:0,flex:1,paddingRight:12}}>
+                  Q{i+1}: {q.question}
+                </p>
+                {g && <SimScoreCircle score={g.score} size={44}/>}
+              </div>
+              {g && (
+                <div style={{marginTop:8}}>
+                  <span style={{fontSize:11,fontWeight:700,color:SIM_VERDICT_COLOR[g.verdict]||SIM_COLORS.blue}}>{g.verdict}</span>
+                  {g.improvements?.[0] && (
+                    <p style={{fontSize:11.5,color:SIM_COLORS.mid,margin:"4px 0 0"}}>Improve: {g.improvements[0]}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <button onClick={onRestart}
+        style={{marginTop:20,background:"#FB923C",color:"#fff",border:"none",
+          borderRadius:8,padding:"11px 24px",fontSize:13,fontWeight:700,cursor:"pointer"}}>
+        Start New Interview
+      </button>
+    </div>
+  );
+}
+
+function InterviewSimulatorTab() {
+  const [screen, setScreen]         = useState("setup");
+  const [session, setSession]       = useState(null);
+  const [finalGrades, setFinalGrades] = useState([]);
+  const [finalScore, setFinalScore]   = useState(0);
+
+  const handleStart    = (data)         => { setSession(data); setScreen("questions"); };
+  const handleComplete = (score, grades) => { setFinalScore(score); setFinalGrades(grades); setScreen("results"); };
+  const handleRestart  = ()             => { setSession(null); setFinalGrades([]); setFinalScore(0); setScreen("setup"); };
+
+  return (
+    <div style={{background:"#fff",border:"1px solid #DDE3EE",borderRadius:12,padding:24,
+      boxShadow:"0 1px 3px rgba(15,28,46,0.06)"}}>
+      <div style={{marginBottom:20,paddingBottom:16,borderBottom:"1px solid #EEF0F5"}}>
+        <h2 style={{fontSize:18,fontWeight:800,margin:"0 0 4px",color:"#111827"}}>🎤 Interview Simulator</h2>
+        <p style={{fontSize:13,color:"#6B7280",margin:0}}>Practice with AI-graded answers — get scored on every response</p>
+      </div>
+      {screen==="setup"     && <SimSetupScreen onStart={handleStart}/>}
+      {screen==="questions" && session && <SimQuestionScreen session={session} onComplete={handleComplete}/>}
+      {screen==="results"   && session && <SimResultsScreen session={session} grades={finalGrades} overallScore={finalScore} onRestart={handleRestart}/>}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// NEW FEATURE: APPLICATION TRACKER (Kanban Board)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const KANBAN_COLUMNS = [
+  { id:"applied",   label:"Applied",   emoji:"📤", color:"#3B82F6", bg:"#EFF6FF" },
+  { id:"screening", label:"Screening", emoji:"🔍", color:"#D97706", bg:"#FFFBEB" },
+  { id:"interview", label:"Interview", emoji:"🎤", color:"#7C3AED", bg:"#F5F3FF" },
+  { id:"offer",     label:"Offer",     emoji:"🎉", color:"#16A34A", bg:"#F0FDF4" },
+  { id:"rejected",  label:"Rejected",  emoji:"❌", color:"#DC2626", bg:"#FEF2F2" },
+];
+const KBN = {
+  orange:"#FB923C", dark:"#111827", mid:"#6B7280",
+  border:"#E5E7EB", white:"#FFFFFF", bg:"#F3F4F6",
+};
+
+function KbnToast({ msg, type }) {
+  return (
+    <div style={{position:"fixed",bottom:24,right:24,zIndex:9999,
+      background:type==="error"?"#DC2626":"#16A34A",color:"#fff",
+      padding:"12px 20px",borderRadius:10,fontSize:13,fontWeight:600,
+      boxShadow:"0 4px 20px rgba(0,0,0,0.15)"}}>
+      {msg}
+    </div>
+  );
+}
+
+function KbnStatsDashboard({ stats }) {
+  if (!stats) return null;
+  const cards = [
+    { label:"Total Applied",  value:stats.total,               color:KBN.dark  },
+    { label:"Response Rate",  value:`${stats.response_rate}%`, color:"#D97706" },
+    { label:"Interview Rate", value:`${stats.interview_rate}%`,color:"#7C3AED" },
+    { label:"Offer Rate",     value:`${stats.offer_rate}%`,    color:"#16A34A" },
+  ];
+  return (
+    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
+      {cards.map(c => (
+        <div key={c.label} style={{background:KBN.white,border:`1px solid ${KBN.border}`,
+          borderRadius:12,padding:"14px 16px"}}>
+          <p style={{fontSize:22,fontWeight:800,color:c.color,margin:"0 0 2px"}}>{c.value}</p>
+          <p style={{fontSize:12,color:KBN.mid,margin:0}}>{c.label}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function KbnAddModal({ onClose, onSave }) {
+  const [form, setForm] = useState({
+    job_title:"", company:"", location:"", salary:"", job_url:"", notes:"",
+  });
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!form.job_title.trim()||!form.company.trim()) { alert("Job title and company are required"); return; }
+    setSaving(true);
+    try {
+      const res = await fetch(TRACKER_API, {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ user_id: FEATURE_USER_ID, ...form }),
+      });
+      const data = await res.json();
+      if (data.success) { onSave(data.application); onClose(); }
+    } catch(e) { alert("Failed to save. Try again."); }
+    setSaving(false);
+  };
+
+  const S = {
+    label:{fontSize:12,fontWeight:600,color:KBN.dark,display:"block",marginBottom:4},
+    input:{width:"100%",border:`1px solid ${KBN.border}`,borderRadius:8,
+           padding:"8px 11px",fontSize:13,boxSizing:"border-box",outline:"none",fontFamily:"inherit"},
+  };
+
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",
+      display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}}>
+      <div style={{background:KBN.white,borderRadius:14,width:"90%",maxWidth:520,
+        padding:24,maxHeight:"90vh",overflowY:"auto"}}>
+        <h3 style={{fontSize:16,fontWeight:800,margin:"0 0 18px"}}>+ Add Job Application</h3>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <div style={{gridColumn:"span 2"}}>
+            <label style={S.label}>Job Title *</label>
+            <input style={S.input} placeholder="AI Engineer" value={form.job_title}
+              onChange={e=>setForm(p=>({...p,job_title:e.target.value}))}/>
+          </div>
+          <div>
+            <label style={S.label}>Company *</label>
+            <input style={S.input} placeholder="Google" value={form.company}
+              onChange={e=>setForm(p=>({...p,company:e.target.value}))}/>
+          </div>
+          <div>
+            <label style={S.label}>Location</label>
+            <input style={S.input} placeholder="New York, NY" value={form.location}
+              onChange={e=>setForm(p=>({...p,location:e.target.value}))}/>
+          </div>
+          <div>
+            <label style={S.label}>Salary Range</label>
+            <input style={S.input} placeholder="$120k - $150k" value={form.salary}
+              onChange={e=>setForm(p=>({...p,salary:e.target.value}))}/>
+          </div>
+          <div>
+            <label style={S.label}>Job URL</label>
+            <input style={S.input} placeholder="https://..." value={form.job_url}
+              onChange={e=>setForm(p=>({...p,job_url:e.target.value}))}/>
+          </div>
+          <div style={{gridColumn:"span 2"}}>
+            <label style={S.label}>Notes</label>
+            <textarea rows={3} placeholder="Recruiter name, interview date..."
+              value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))}
+              style={{...S.input,resize:"vertical"}}/>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:18}}>
+          <button onClick={onClose} style={{background:KBN.bg,border:"none",borderRadius:8,
+            padding:"9px 16px",fontSize:13,fontWeight:600,cursor:"pointer"}}>Cancel</button>
+          <button onClick={handleSave} disabled={saving}
+            style={{background:saving?KBN.border:KBN.orange,color:"#fff",border:"none",
+              borderRadius:8,padding:"9px 18px",fontSize:13,fontWeight:700,
+              cursor:saving?"not-allowed":"pointer"}}>
+            {saving?"Saving...":"Save Application"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function KbnDetailModal({ app, onClose, onUpdate, onDelete }) {
+  const [editing, setEditing] = useState(false);
+  const [form, setForm]       = useState({...app});
+  const [saving, setSaving]   = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`${TRACKER_API}/${app.id}`, {
+        method:"PUT", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (data.success) { onUpdate(data.application); setEditing(false); }
+    } catch(e) { alert("Failed to update"); }
+    setSaving(false);
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm("Delete this application?")) return;
+    await fetch(`${TRACKER_API}/${app.id}`, { method:"DELETE" });
+    onDelete(app.id); onClose();
+  };
+
+  const col = KANBAN_COLUMNS.find(c=>c.id===app.status)||KANBAN_COLUMNS[0];
+  const S = {
+    label:{fontSize:12,fontWeight:600,color:KBN.dark,display:"block",marginBottom:4},
+    input:{width:"100%",border:`1px solid ${KBN.border}`,borderRadius:8,
+           padding:"7px 10px",fontSize:13,boxSizing:"border-box",outline:"none",fontFamily:"inherit"},
+  };
+
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",
+      display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}}>
+      <div style={{background:KBN.white,borderRadius:14,width:"90%",maxWidth:540,
+        padding:24,maxHeight:"90vh",overflowY:"auto"}}>
+        <div style={{display:"flex",justifyContent:"space-between",marginBottom:16}}>
+          <div>
+            <h3 style={{fontSize:16,fontWeight:800,margin:"0 0 4px"}}>{app.job_title}</h3>
+            <p style={{fontSize:13,color:KBN.mid,margin:0}}>{app.company}{app.location&&` · ${app.location}`}</p>
+          </div>
+          <span style={{background:col.bg,color:col.color,fontSize:12,fontWeight:700,
+            padding:"4px 10px",borderRadius:20,height:"fit-content"}}>
+            {col.emoji} {col.label}
+          </span>
+        </div>
+
+        {!editing ? (
+          <>
+            {[["Salary",app.salary],["Interview",app.interview_date],
+              ["Contact",app.contact_name?`${app.contact_name} ${app.contact_email||""}`:null],
+              ["Applied",new Date(app.created_at).toLocaleDateString()]
+            ].filter(([,v])=>v).map(([label,value])=>(
+              <div key={label} style={{display:"flex",gap:8,marginBottom:6}}>
+                <span style={{fontSize:12,color:KBN.mid,minWidth:70}}>{label}</span>
+                <span style={{fontSize:12,color:KBN.dark}}>{value}</span>
+              </div>
+            ))}
+            {app.notes && (
+              <div style={{background:KBN.bg,borderRadius:8,padding:"10px 12px",
+                fontSize:12.5,color:KBN.dark,marginTop:10,lineHeight:1.6}}>{app.notes}</div>
+            )}
+            {app.job_url && (
+              <a href={app.job_url} target="_blank" rel="noreferrer"
+                style={{display:"block",marginTop:10,fontSize:12.5,color:"#3B82F6",textDecoration:"none"}}>
+                🔗 View Job Posting
+              </a>
+            )}
+            <div style={{marginTop:16}}>
+              <p style={{fontSize:12,fontWeight:600,color:KBN.mid,marginBottom:6}}>Move to:</p>
+              <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                {KANBAN_COLUMNS.filter(c=>c.id!==app.status).map(c=>(
+                  <button key={c.id}
+                    onClick={async()=>{
+                      await fetch(`${TRACKER_API}/${app.id}/status`,{
+                        method:"PUT",headers:{"Content-Type":"application/json"},
+                        body:JSON.stringify({status:c.id})});
+                      onUpdate({...app,status:c.id}); onClose();
+                    }}
+                    style={{background:c.bg,color:c.color,border:`1px solid ${c.color}40`,
+                      borderRadius:20,padding:"4px 12px",fontSize:12,fontWeight:600,cursor:"pointer"}}>
+                    {c.emoji} {c.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{display:"flex",gap:8,marginTop:18,justifyContent:"flex-end"}}>
+              <button onClick={handleDelete} style={{background:"#FEF2F2",color:"#DC2626",border:"none",
+                borderRadius:8,padding:"8px 14px",fontSize:12,fontWeight:600,cursor:"pointer"}}>Delete</button>
+              <button onClick={()=>setEditing(true)} style={{background:KBN.orange,color:"#fff",border:"none",
+                borderRadius:8,padding:"8px 16px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Edit</button>
+              <button onClick={onClose} style={{background:KBN.bg,border:"none",borderRadius:8,
+                padding:"8px 14px",fontSize:12,fontWeight:600,cursor:"pointer"}}>Close</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              {[["job_title","Job Title"],["company","Company"],["location","Location"],
+                ["salary","Salary"],["interview_date","Interview Date"],
+                ["contact_name","Contact Name"],["contact_email","Contact Email"]
+              ].map(([field,label])=>(
+                <div key={field} style={{gridColumn:field==="job_title"?"span 2":undefined}}>
+                  <label style={S.label}>{label}</label>
+                  <input style={S.input} value={form[field]||""}
+                    onChange={e=>setForm(p=>({...p,[field]:e.target.value}))}/>
+                </div>
+              ))}
+              <div style={{gridColumn:"span 2"}}>
+                <label style={S.label}>Notes</label>
+                <textarea rows={3} style={{...S.input,resize:"vertical"}}
+                  value={form.notes||""} onChange={e=>setForm(p=>({...p,notes:e.target.value}))}/>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:14}}>
+              <button onClick={()=>setEditing(false)} style={{background:KBN.bg,border:"none",borderRadius:8,
+                padding:"8px 14px",fontSize:12,fontWeight:600,cursor:"pointer"}}>Cancel</button>
+              <button onClick={handleSave} disabled={saving}
+                style={{background:saving?KBN.border:KBN.orange,color:"#fff",border:"none",borderRadius:8,
+                  padding:"8px 16px",fontSize:12,fontWeight:700,cursor:saving?"not-allowed":"pointer"}}>
+                {saving?"Saving...":"Save"}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function KbnAppCard({ app, onClick }) {
+  const daysAgo = Math.floor((new Date()-new Date(app.created_at))/(1000*60*60*24));
+  return (
+    <div onClick={onClick}
+      style={{background:KBN.white,border:`1px solid ${KBN.border}`,
+        borderRadius:10,padding:"12px 14px",cursor:"pointer",marginBottom:8}}
+      onMouseEnter={e=>e.currentTarget.style.boxShadow="0 2px 12px rgba(0,0,0,0.08)"}
+      onMouseLeave={e=>e.currentTarget.style.boxShadow="none"}>
+      <p style={{fontSize:13,fontWeight:700,color:KBN.dark,margin:"0 0 2px",
+        whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{app.job_title}</p>
+      <p style={{fontSize:12,color:KBN.mid,margin:"0 0 6px"}}>{app.company}</p>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        {app.salary && <span style={{fontSize:11,color:"#16A34A",fontWeight:600}}>{app.salary}</span>}
+        {app.location && <span style={{fontSize:11,color:KBN.mid}}>📍 {app.location}</span>}
+        <span style={{fontSize:11,color:KBN.mid,marginLeft:"auto"}}>
+          {daysAgo===0?"Today":`${daysAgo}d ago`}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function ApplicationTrackerTab() {
+  const [applications, setApplications] = useState([]);
+  const [stats, setStats]               = useState(null);
+  const [loading, setLoading]           = useState(true);
+  const [showAdd, setShowAdd]           = useState(false);
+  const [selected, setSelected]         = useState(null);
+  const [toast, setToast]               = useState(null);
+
+  const showToast = (msg, type="success") => {
+    setToast({msg,type}); setTimeout(()=>setToast(null),3000);
+  };
+
+  const fetchAll = async () => {
+    setLoading(true);
+    try {
+      const [appsRes, statsRes] = await Promise.all([
+        fetch(`${TRACKER_API}/${FEATURE_USER_ID}`),
+        fetch(`${TRACKER_API}/${FEATURE_USER_ID}/stats`),
+      ]);
+      const appsData  = await appsRes.json();
+      const statsData = await statsRes.json();
+      setApplications(appsData.applications||[]);
+      setStats(statsData);
+    } catch(e) { showToast("Failed to load","error"); }
+    setLoading(false);
+  };
+
+  useEffect(()=>{fetchAll();},[]);
+
+  const handleSaved   = (app)     => { setApplications(prev=>[app,...prev]); showToast("Application saved!"); fetchAll(); };
+  const handleUpdated = (updated) => { setApplications(prev=>prev.map(a=>a.id===updated.id?updated:a)); fetchAll(); };
+  const handleDeleted = (id)      => { setApplications(prev=>prev.filter(a=>a.id!==id)); showToast("Application deleted"); fetchAll(); };
+
+  const byStatus = KANBAN_COLUMNS.reduce((acc,col)=>{
+    acc[col.id] = applications.filter(a=>a.status===col.id);
+    return acc;
+  },{});
+
+  return (
+    <div>
+      {toast && <KbnToast msg={toast.msg} type={toast.type}/>}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
+        <div>
+          <h2 style={{fontSize:18,fontWeight:800,margin:"0 0 4px"}}>📋 Application Tracker</h2>
+          <p style={{color:KBN.mid,fontSize:13,margin:0}}>Track every job application in one place</p>
+        </div>
+        <button onClick={()=>setShowAdd(true)}
+          style={{background:KBN.orange,color:"#fff",border:"none",
+            borderRadius:8,padding:"10px 18px",fontSize:13,fontWeight:700,cursor:"pointer"}}>
+          + Add Application
+        </button>
+      </div>
+
+      {stats && <KbnStatsDashboard stats={stats}/>}
+
+      {loading ? (
+        <p style={{color:KBN.mid,textAlign:"center",padding:40}}>Loading...</p>
+      ) : (
+        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:12,overflowX:"auto"}}>
+          {KANBAN_COLUMNS.map(col=>(
+            <div key={col.id}>
+              <div style={{background:col.bg,borderRadius:"10px 10px 0 0",
+                padding:"10px 12px",border:`1px solid ${col.color}30`,
+                borderBottom:`2px solid ${col.color}`}}>
+                <span style={{fontSize:13,fontWeight:700,color:col.color}}>{col.emoji} {col.label}</span>
+                <span style={{marginLeft:6,background:col.color+"20",color:col.color,
+                  fontSize:11,fontWeight:700,padding:"1px 7px",borderRadius:20}}>
+                  {byStatus[col.id]?.length||0}
+                </span>
+              </div>
+              <div style={{background:KBN.bg,border:`1px solid ${KBN.border}`,
+                borderTop:"none",borderRadius:"0 0 10px 10px",padding:"10px 8px",minHeight:200}}>
+                {byStatus[col.id]?.length===0 && (
+                  <p style={{fontSize:12,color:KBN.border,textAlign:"center",paddingTop:20}}>No applications</p>
+                )}
+                {byStatus[col.id]?.map(app=>(
+                  <KbnAppCard key={app.id} app={app} onClick={()=>setSelected(app)}/>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showAdd && <KbnAddModal onClose={()=>setShowAdd(false)} onSave={handleSaved}/>}
+      {selected && (
+        <KbnDetailModal app={selected} onClose={()=>setSelected(null)}
+          onUpdate={(updated)=>{handleUpdated(updated);setSelected(updated);}}
+          onDelete={handleDeleted}/>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// NEW FEATURE: RESUME VERSION MANAGER
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const VER_ICONS = {
+  plus:    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+  edit:    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
+  copy:    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>,
+  trash:   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>,
+  check:   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg>,
+  compare: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
+  close:   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+};
+
+const VER_STYLES = {
+  primaryBtn:{display:"flex",alignItems:"center",gap:6,background:"#FB923C",color:"#fff",
+    border:"none",borderRadius:8,padding:"9px 16px",fontSize:13,fontWeight:600,cursor:"pointer"},
+  compareBtn:{display:"flex",alignItems:"center",gap:6,background:"#EFF6FF",color:"#3B82F6",
+    border:"1px solid #BFDBFE",borderRadius:8,padding:"9px 16px",fontSize:13,fontWeight:600,cursor:"pointer"},
+  cancelBtn:{background:"#F3F4F6",color:"#374151",border:"none",borderRadius:8,
+    padding:"9px 16px",fontSize:13,fontWeight:600,cursor:"pointer"},
+  card:{background:"#fff",borderRadius:12,padding:18,position:"relative",
+    boxShadow:"0 1px 4px rgba(0,0,0,0.06)",transition:"box-shadow .2s"},
+  actionBtn:{display:"flex",alignItems:"center",gap:4,background:"none",border:"none",
+    color:"#6B7280",fontSize:12,cursor:"pointer",padding:"4px 8px",borderRadius:6,fontWeight:500},
+  overlay:{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",
+    alignItems:"center",justifyContent:"center",zIndex:1000},
+  modal:{background:"#fff",borderRadius:14,width:"90%",maxWidth:640,maxHeight:"90vh",
+    overflowY:"auto",padding:24,boxShadow:"0 20px 60px rgba(0,0,0,0.2)"},
+  input:{width:"100%",border:"1px solid #E5E7EB",borderRadius:8,padding:"9px 12px",
+    fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"inherit"},
+  textarea:{width:"100%",border:"1px solid #E5E7EB",borderRadius:8,padding:"9px 12px",
+    fontSize:13,outline:"none",resize:"vertical",boxSizing:"border-box",fontFamily:"monospace"},
+};
+
+function VerScoreBadge({ score }) {
+  if (!score) return <span style={{fontSize:12,color:"#9CA3AF",fontStyle:"italic"}}>No score</span>;
+  const color = score>=80?"#16A34A":score>=60?"#D97706":"#DC2626";
+  const bg    = score>=80?"#F0FDF4":score>=60?"#FFFBEB":"#FEF2F2";
+  return <span style={{fontSize:12,fontWeight:700,padding:"3px 10px",borderRadius:20,color,background:bg}}>{score}%</span>;
+}
+
+function VerModal({ title, onClose, children }) {
+  return (
+    <div style={VER_STYLES.overlay}>
+      <div style={VER_STYLES.modal}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+          <h3 style={{fontSize:16,fontWeight:700,margin:0}}>{title}</h3>
+          <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:"#9CA3AF",padding:4}}>{VER_ICONS.close}</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function ResumeVersionManagerTab() {
+  const [versions, setVersions]         = useState([]);
+  const [loading, setLoading]           = useState(true);
+  const [showCreate, setShowCreate]     = useState(false);
+  const [showEdit, setShowEdit]         = useState(null);
+  const [showCompare, setShowCompare]   = useState(false);
+  const [compareIds, setCompareIds]     = useState([]);
+  const [compareResult, setCompareResult] = useState(null);
+  const [toast, setToast]               = useState(null);
+  const [form, setForm] = useState({name:"",content:"",target_role:""});
+
+  const showToast = (msg,type="success") => { setToast({msg,type}); setTimeout(()=>setToast(null),3000); };
+
+  const fetchVersions = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${VERSIONS_API}/${FEATURE_USER_ID}`);
+      const data = await res.json();
+      setVersions(data.versions||[]);
+    } catch(e) { showToast("Failed to load versions","error"); }
+    setLoading(false);
+  };
+
+  useEffect(()=>{fetchVersions();},[]);
+
+  const handleCreate = async () => {
+    if (!form.name.trim()||!form.content.trim()) { showToast("Name and content are required","error"); return; }
+    const res = await fetch(VERSIONS_API,{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({user_id:FEATURE_USER_ID,...form}),
+    });
+    const data = await res.json();
+    if (data.success) { setVersions(prev=>[data.version,...prev]); setShowCreate(false); setForm({name:"",content:"",target_role:""}); showToast("Version created!"); }
+  };
+
+  const handleUpdate = async () => {
+    if (!form.name.trim()) { showToast("Name is required","error"); return; }
+    const res = await fetch(`${VERSIONS_API}/${FEATURE_USER_ID}/${showEdit.id}`,{
+      method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(form),
+    });
+    const data = await res.json();
+    if (data.success) { setVersions(prev=>prev.map(v=>v.id===data.version.id?data.version:v)); setShowEdit(null); showToast("Version updated!"); }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Delete this version?")) return;
+    const res = await fetch(`${VERSIONS_API}/${FEATURE_USER_ID}/${id}`,{method:"DELETE"});
+    const data = await res.json();
+    if (data.success) { setVersions(prev=>prev.filter(v=>v.id!==id)); showToast("Version deleted"); }
+  };
+
+  const handleActivate = async (id) => {
+    const res = await fetch(`${VERSIONS_API}/${FEATURE_USER_ID}/${id}/activate`,{method:"PUT"});
+    const data = await res.json();
+    if (data.success) { setVersions(prev=>prev.map(v=>({...v,is_active:v.id===id?1:0}))); showToast("Set as active resume!"); }
+  };
+
+  const handleDuplicate = async (id) => {
+    const res = await fetch(`${VERSIONS_API}/${FEATURE_USER_ID}/${id}/duplicate`,{method:"POST"});
+    const data = await res.json();
+    if (data.success) { setVersions(prev=>[data.version,...prev]); showToast("Version duplicated!"); }
+  };
+
+  const toggleCompare = (id) => {
+    setCompareIds(prev=>prev.includes(id)?prev.filter(x=>x!==id):prev.length<2?[...prev,id]:prev);
+  };
+
+  const handleCompare = async () => {
+    if (compareIds.length!==2) { showToast("Select exactly 2 versions","error"); return; }
+    const res = await fetch(`${VERSIONS_API}/${FEATURE_USER_ID}/compare/${compareIds[0]}/${compareIds[1]}`);
+    const data = await res.json();
+    setCompareResult(data); setShowCompare(true);
+  };
+
+  const openEdit = (v) => { setForm({name:v.name,content:v.content,target_role:v.target_role||""}); setShowEdit(v); };
+
+  const F = {
+    label:{display:"block",fontSize:12.5,fontWeight:600,color:"#374151",marginBottom:5},
+    group:{marginBottom:14},
+    footer:{display:"flex",justifyContent:"flex-end",gap:10,marginTop:18},
+  };
+
+  return (
+    <div>
+      {toast && (
+        <div style={{position:"fixed",bottom:24,right:24,zIndex:9999,
+          background:toast.type==="error"?"#DC2626":"#16A34A",color:"#fff",
+          padding:"12px 20px",borderRadius:10,fontSize:13,fontWeight:600,
+          boxShadow:"0 4px 20px rgba(0,0,0,0.15)"}}>
+          {toast.msg}
+        </div>
+      )}
+
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
+        <div>
+          <h2 style={{fontSize:18,fontWeight:800,margin:"0 0 4px"}}>📄 Resume Versions</h2>
+          <p style={{fontSize:13,color:"#6B7280",margin:0}}>{versions.length} version{versions.length!==1?"s":""} saved</p>
+        </div>
+        <div style={{display:"flex",gap:10}}>
+          {compareIds.length===2 && (
+            <button onClick={handleCompare} style={VER_STYLES.compareBtn}>{VER_ICONS.compare} Compare Selected</button>
+          )}
+          <button onClick={()=>{setForm({name:"",content:"",target_role:""});setShowCreate(true);}}
+            style={VER_STYLES.primaryBtn}>{VER_ICONS.plus} New Version</button>
+        </div>
+      </div>
+
+      {versions.length>=2 && compareIds.length<2 && (
+        <div style={{background:"#FFF7ED",border:"1px solid #FED7AA",borderRadius:8,
+          padding:"10px 14px",fontSize:12.5,color:"#92400E",marginBottom:16}}>
+          💡 Select 2 versions using the compare button to see them side by side
+        </div>
+      )}
+
+      {loading ? (
+        <div style={{textAlign:"center",padding:60,color:"#9CA3AF"}}>Loading versions...</div>
+      ) : versions.length===0 ? (
+        <div style={{textAlign:"center",padding:60}}>
+          <p style={{fontSize:40,margin:0}}>📄</p>
+          <p style={{color:"#6B7280",marginTop:8}}>No resume versions yet</p>
+          <button onClick={()=>setShowCreate(true)} style={{...VER_STYLES.primaryBtn,marginTop:12}}>
+            {VER_ICONS.plus} Create First Version
+          </button>
+        </div>
+      ) : (
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:16}}>
+          {versions.map(v=>(
+            <div key={v.id} style={{...VER_STYLES.card,
+              border:v.is_active?"2px solid #FB923C":"1px solid #E5E7EB",
+              ...(compareIds.includes(v.id)?{outline:"2px solid #3B82F6"}:{})}}>
+              {v.is_active===1 && (
+                <div style={{position:"absolute",top:12,right:12,background:"#FFF7ED",color:"#FB923C",
+                  fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:20}}>✓ Active</div>
+              )}
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                <div style={{flex:1}}>
+                  <h3 style={{fontSize:14,fontWeight:700,margin:0,color:"#111",paddingRight:8}}>{v.name}</h3>
+                  {v.target_role && (
+                    <span style={{display:"inline-block",background:"#EFF6FF",color:"#3B82F6",
+                      fontSize:11,padding:"2px 8px",borderRadius:20,marginTop:4,fontWeight:500}}>
+                      {v.target_role}
+                    </span>
+                  )}
+                </div>
+                <VerScoreBadge score={v.score}/>
+              </div>
+              <div style={{display:"flex",gap:12,marginBottom:8}}>
+                <span style={{fontSize:11.5,color:"#9CA3AF"}}>📝 {v.word_count} words</span>
+                <span style={{fontSize:11.5,color:"#9CA3AF"}}>🕐 {new Date(v.updated_at).toLocaleDateString()}</span>
+              </div>
+              <p style={{fontSize:12,color:"#6B7280",lineHeight:1.5,margin:"8px 0 12px",
+                display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical",overflow:"hidden"}}>
+                {v.content.slice(0,120)}...
+              </p>
+              <div style={{display:"flex",gap:4,flexWrap:"wrap",borderTop:"1px solid #F3F4F6",paddingTop:10}}>
+                <button onClick={()=>openEdit(v)} style={VER_STYLES.actionBtn}>{VER_ICONS.edit} Edit</button>
+                <button onClick={()=>handleDuplicate(v.id)} style={VER_STYLES.actionBtn}>{VER_ICONS.copy} Copy</button>
+                <button onClick={()=>toggleCompare(v.id)}
+                  style={{...VER_STYLES.actionBtn,color:compareIds.includes(v.id)?"#3B82F6":undefined}}>
+                  {VER_ICONS.compare} Compare
+                </button>
+                {v.is_active!==1 && (
+                  <button onClick={()=>handleActivate(v.id)} style={VER_STYLES.actionBtn}>{VER_ICONS.check} Use This</button>
+                )}
+                <button onClick={()=>handleDelete(v.id)} style={{...VER_STYLES.actionBtn,color:"#DC2626"}}>{VER_ICONS.trash}</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showCreate && (
+        <VerModal title="Create New Version" onClose={()=>setShowCreate(false)}>
+          <div style={F.group}><label style={F.label}>Version Name *</label>
+            <input style={VER_STYLES.input} placeholder='e.g. "AI Engineer Resume"'
+              value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))}/></div>
+          <div style={F.group}><label style={F.label}>Target Role</label>
+            <input style={VER_STYLES.input} placeholder='e.g. "AI Engineer at Google"'
+              value={form.target_role} onChange={e=>setForm(p=>({...p,target_role:e.target.value}))}/></div>
+          <div style={F.group}><label style={F.label}>Resume Content *</label>
+            <textarea style={VER_STYLES.textarea} rows={10} placeholder="Paste your resume text here..."
+              value={form.content} onChange={e=>setForm(p=>({...p,content:e.target.value}))}/></div>
+          <div style={F.footer}>
+            <button onClick={()=>setShowCreate(false)} style={VER_STYLES.cancelBtn}>Cancel</button>
+            <button onClick={handleCreate} style={VER_STYLES.primaryBtn}>Save Version</button>
+          </div>
+        </VerModal>
+      )}
+
+      {showEdit && (
+        <VerModal title={`Edit — ${showEdit.name}`} onClose={()=>setShowEdit(null)}>
+          <div style={F.group}><label style={F.label}>Version Name *</label>
+            <input style={VER_STYLES.input} value={form.name}
+              onChange={e=>setForm(p=>({...p,name:e.target.value}))}/></div>
+          <div style={F.group}><label style={F.label}>Target Role</label>
+            <input style={VER_STYLES.input} value={form.target_role}
+              onChange={e=>setForm(p=>({...p,target_role:e.target.value}))}/></div>
+          <div style={F.group}><label style={F.label}>Resume Content</label>
+            <textarea style={VER_STYLES.textarea} rows={10} value={form.content}
+              onChange={e=>setForm(p=>({...p,content:e.target.value}))}/></div>
+          <div style={F.footer}>
+            <button onClick={()=>setShowEdit(null)} style={VER_STYLES.cancelBtn}>Cancel</button>
+            <button onClick={handleUpdate} style={VER_STYLES.primaryBtn}>Save Changes</button>
+          </div>
+        </VerModal>
+      )}
+
+      {showCompare && compareResult && (
+        <VerModal title="Version Comparison" onClose={()=>{setShowCompare(false);setCompareIds([]);}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+            {[compareResult.version1,compareResult.version2].map((v,i)=>(
+              <div key={v.id} style={{background:"#F9FAFB",borderRadius:10,padding:14,border:"1px solid #E5E7EB"}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#FB923C",textTransform:"uppercase",letterSpacing:0.5}}>
+                  {i===0?"Version A":"Version B"}
+                </div>
+                <h4 style={{margin:"4px 0",fontSize:14}}>{v.name}</h4>
+                {v.target_role && <p style={{margin:"2px 0",fontSize:12,color:"#6B7280"}}>{v.target_role}</p>}
+                <div style={{marginTop:8,display:"flex",gap:12}}>
+                  <VerScoreBadge score={v.score}/>
+                  <span style={{fontSize:11.5,color:"#9CA3AF"}}>{v.word_count} words</span>
+                </div>
+                <p style={{fontSize:12,color:"#6B7280",lineHeight:1.5,marginTop:8,
+                  display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical",overflow:"hidden"}}>
+                  {v.content.slice(0,200)}...
+                </p>
+              </div>
+            ))}
+          </div>
+          <div style={{background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:10,padding:14,marginTop:14}}>
+            <h4 style={{margin:"0 0 8px",fontSize:13}}>Summary</h4>
+            <p style={{margin:"2px 0",fontSize:12}}>
+              <b>Word count difference:</b> {Math.abs(compareResult.comparison.word_count_diff)} words
+              {compareResult.comparison.word_count_diff>0?" (A is longer)":" (B is longer)"}
+            </p>
+            {compareResult.version1.score&&compareResult.version2.score&&(
+              <p style={{margin:"2px 0",fontSize:12}}>
+                <b>Score difference:</b> {Math.abs(compareResult.comparison.score_diff)}%
+                {compareResult.comparison.score_diff>0?" (A scores higher)":" (B scores higher)"}
+              </p>
+            )}
+          </div>
+          <div style={{display:"flex",justifyContent:"flex-end",gap:10,marginTop:18}}>
+            <button onClick={()=>{setShowCompare(false);setCompareIds([]);}} style={VER_STYLES.primaryBtn}>Done</button>
+          </div>
+        </VerModal>
+      )}
+    </div>
+  );
+}
 
 // ── Results Screen ────────────────────────────────────────────────────────────
 function ResultsScreen({ data, filename, onReset }) {
   const [activeTab, setActiveTab] = useState("overview");
-  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
-  useEffect(() => {
-    const handle = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener("resize", handle);
-    return () => window.removeEventListener("resize", handle);
-  }, []);
   const [savedJobs, setSavedJobs] = useState(() => {
     try { return JSON.parse(localStorage.getItem("applyedge_saved") || "[]"); }
     catch { return []; }
@@ -1390,33 +2215,33 @@ function ResultsScreen({ data, filename, onReset }) {
   };
 
   const NAV = [
-    { id:"overview",  emoji:"📊", label:"Overview",      group:"Analysis" },
-    { id:"ats",       emoji:"🛡️", label:"ATS Check",     group:"Analysis" },
-    { id:"job-match", emoji:"🎯", label:"Job Match",     group:"Optimize" },
-    { id:"rewrite",   emoji:"✏️", label:"Bullet Rewrite",group:"Optimize" },
-    { id:"tailor",    emoji:"✨", label:"Tailor Resume", group:"Optimize" },
-    { id:"cover",     emoji:"📝", label:"Cover Letter",  group:"Apply" },
-    { id:"interview", emoji:"🎤", label:"Interview Prep",group:"Apply" },
-    { id:"jobs",      emoji:"🔍", label:"Find Jobs",     group:"Apply" },
-    { id:"saved",     emoji:"🔖", label:"Saved Jobs",    group:"Apply", badge: savedJobs.length||null },
+    { id:"overview",   emoji:"📊", label:"Overview",          group:"Analysis" },
+    { id:"ats",        emoji:"🛡️", label:"ATS Check",         group:"Analysis" },
+    { id:"job-match",  emoji:"🎯", label:"Job Match",         group:"Optimize" },
+    { id:"rewrite",    emoji:"✏️", label:"Bullet Rewrite",    group:"Optimize" },
+    { id:"tailor",     emoji:"✨", label:"Tailor Resume",     group:"Optimize" },
+    { id:"versions",   emoji:"📄", label:"Resume Versions",   group:"Manage" },
+    { id:"cover",      emoji:"📝", label:"Cover Letter",      group:"Apply" },
+    { id:"interview",  emoji:"🎤", label:"Interview Q&A",     group:"Apply" },
+    { id:"simulator",  emoji:"🎯", label:"Interview Simulator",group:"Apply" },
+    { id:"tracker",    emoji:"📋", label:"Application Tracker",group:"Apply" },
+    { id:"jobs",       emoji:"🔍", label:"Find Jobs",         group:"Apply" },
+    { id:"saved",      emoji:"🔖", label:"Saved Jobs",        group:"Apply", badge: savedJobs.length||null },
   ];
 
-  const groups = ["Analysis","Optimize","Apply"];
+  const groups = ["Analysis","Optimize","Manage","Apply"];
   const ta = { width:"100%", padding:"11px 14px", background:"#FAFBFD",
     border:"1.5px solid #DDE3EE", borderRadius:9, resize:"vertical",
     fontSize:13, fontFamily:"'Sora',sans-serif", color:"#0F1C2E",
     outline:"none", lineHeight:1.65 };
 
   return (
-    <div style={{minHeight:"100vh",background:"#F4F6FB",fontFamily:"'Sora',sans-serif",display:"flex",flexDirection:"column",overflowX:"hidden",width:"100%",maxWidth:"100vw"}}>
-
-      {/* Top bar */}
+    <div style={{minHeight:"100vh",background:"#F4F6FB",fontFamily:"'Sora',sans-serif",display:"flex",flexDirection:"column"}}>
       <header style={{background:"#0F1C2E",padding:"0 32px",height:56,
         display:"flex",alignItems:"center",justifyContent:"space-between",
         flexShrink:0,position:"sticky",top:0,zIndex:20,
         borderBottom:"1px solid rgba(255,255,255,0.08)",
-        boxShadow:"0 2px 12px rgba(0,0,0,0.3)",
-        overflowX:"hidden",width:"100%",boxSizing:"border-box"}}>
+        boxShadow:"0 2px 12px rgba(0,0,0,0.3)"}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           <div style={{width:30,height:30,background:"#1B4F8A",borderRadius:7,
             display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>⚡</div>
@@ -1431,10 +2256,10 @@ function ResultsScreen({ data, filename, onReset }) {
         </div>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 14px",
-            background: data.overall_score>=60?"rgba(16,185,129,0.2)":"rgba(220,38,38,0.2)",
+            background:data.overall_score>=60?"rgba(16,185,129,0.2)":"rgba(220,38,38,0.2)",
             border:`1.5px solid ${data.overall_score>=60?"rgba(16,185,129,0.5)":"rgba(220,38,38,0.5)"}`,
             borderRadius:20}}>
-            <span style={{fontSize:14,fontWeight:800,color: data.overall_score>=60?"#34D399":"#F87171"}}>
+            <span style={{fontSize:14,fontWeight:800,color:data.overall_score>=60?"#34D399":"#F87171"}}>
               {data.overall_score}/100
             </span>
             <span style={{fontSize:12,fontWeight:600,color:"#CBD5E1"}}>
@@ -1451,73 +2276,44 @@ function ResultsScreen({ data, filename, onReset }) {
         </div>
       </header>
 
-      <div style={{flex:1,display:"flex",flexDirection: isMobile ? "column" : "row"}}>
-
-        {/* Sidebar */}
-        {/* ── MOBILE: horizontal pill tab bar ── */}
-        {isMobile && (
-          <div style={{background:"#FFFFFF",borderBottom:"1px solid #DDE3EE",
-            position:"sticky",top:56,zIndex:10,
-            display:"flex",overflowX:"auto",gap:6,padding:"8px 12px",
-            scrollbarWidth:"none"}}>
-            {NAV.map(n=>(
-              <button key={n.id} onClick={()=>setActiveTab(n.id)}
-                style={{display:"inline-flex",alignItems:"center",gap:5,
-                  padding:"6px 12px",borderRadius:20,border:"none",
-                  cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,
-                  fontSize:12,fontWeight:600,
-                  background: activeTab===n.id?"#1B4F8A":"#F4F6FB",
-                  color: activeTab===n.id?"#fff":"#4B5563"}}>
-                <span>{n.emoji}</span>{n.label}
-                {n.badge?<span style={{background:"rgba(255,255,255,0.3)",
-                  borderRadius:10,padding:"0 4px",fontSize:10}}>{n.badge}</span>:null}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* ── DESKTOP: vertical grouped sidebar ── */}
-        {!isMobile && (
-          <aside style={{width:218,flexShrink:0,background:"#FFFFFF",
-            borderRight:"1px solid #DDE3EE",position:"sticky",top:56,
-            height:"calc(100vh - 56px)",overflowY:"auto",padding:"20px 0"}}>
-            {groups.map(group => (
-              <div key={group} style={{marginBottom:6}}>
-                <div style={{padding:"4px 18px 8px",fontSize:10,fontWeight:700,
-                  color:"#9CA3AF",letterSpacing:"0.1em",textTransform:"uppercase"}}>
-                  {group}
-                </div>
-                {NAV.filter(n=>n.group===group).map(n=>(
-                  <button key={n.id} onClick={()=>setActiveTab(n.id)}
-                    style={{width:"100%",display:"flex",alignItems:"center",gap:9,
-                      padding:"9px 18px",border:"none",cursor:"pointer",textAlign:"left",
-                      background: activeTab===n.id?"#EEF3FB":"transparent",
-                      borderLeft: activeTab===n.id?"3px solid #1B4F8A":"3px solid transparent",
-                      transition:"all .12s"}}>
-                    <span style={{fontSize:15}}>{n.emoji}</span>
-                    <span style={{fontSize:13,fontWeight:activeTab===n.id?600:400,
-                      color:activeTab===n.id?"#1B4F8A":"#4B5563",flex:1}}>
-                      {n.label}
-                    </span>
-                    {n.badge ? (
-                      <span style={{fontSize:10,fontWeight:700,minWidth:18,height:18,
-                        borderRadius:10,background:"#1B4F8A",color:"#fff",
-                        display:"flex",alignItems:"center",justifyContent:"center",padding:"0 4px"}}>
-                        {n.badge}
-                      </span>
-                    ) : null}
-                  </button>
-                ))}
-                <div style={{height:1,background:"#EEF0F5",margin:"10px 18px 4px"}}/>
+      <div style={{flex:1,display:"flex"}}>
+        <aside style={{width:220,flexShrink:0,background:"#FFFFFF",
+          borderRight:"1px solid #DDE3EE",
+          position:"sticky",top:56,height:"calc(100vh - 56px)",
+          overflowY:"auto",padding:"20px 0"}}>
+          {groups.map(group => (
+            <div key={group} style={{marginBottom:6}}>
+              <div style={{padding:"4px 18px 8px",fontSize:10,fontWeight:700,
+                color:"#9CA3AF",letterSpacing:"0.1em",textTransform:"uppercase"}}>
+                {group}
               </div>
-            ))}
-          </aside>
-        )}
+              {NAV.filter(n=>n.group===group).map(n=>(
+                <button key={n.id} onClick={()=>setActiveTab(n.id)}
+                  style={{width:"100%",display:"flex",alignItems:"center",gap:9,
+                    padding:"9px 18px",border:"none",cursor:"pointer",textAlign:"left",
+                    background:activeTab===n.id?"#EEF3FB":"transparent",
+                    borderLeft:activeTab===n.id?"3px solid #1B4F8A":"3px solid transparent",
+                    transition:"all .12s"}}>
+                  <span style={{fontSize:15}}>{n.emoji}</span>
+                  <span style={{fontSize:13,fontWeight:activeTab===n.id?600:400,
+                    color:activeTab===n.id?"#1B4F8A":"#4B5563",flex:1}}>
+                    {n.label}
+                  </span>
+                  {n.badge ? (
+                    <span style={{fontSize:10,fontWeight:700,minWidth:18,height:18,
+                      borderRadius:10,background:"#1B4F8A",color:"#fff",
+                      display:"flex",alignItems:"center",justifyContent:"center",padding:"0 4px"}}>
+                      {n.badge}
+                    </span>
+                  ) : null}
+                </button>
+              ))}
+              <div style={{height:1,background:"#EEF0F5",margin:"10px 18px 4px"}}/>
+            </div>
+          ))}
+        </aside>
 
-        {/* Main */}
-        <main style={{flex:1,padding: isMobile ? "16px" : "28px 32px",overflowY:"auto",minWidth:0,overflowX:"hidden",width:"100%",boxSizing:"border-box"}}>
-
-          {/* Breadcrumb */}
+        <main style={{flex:1,padding:"28px 32px",overflowY:"auto",minWidth:0}}>
           <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:20}}>
             <span style={{fontSize:12,color:"#9CA3AF"}}>ApplyEdge</span>
             <span style={{fontSize:12,color:"#D1D5DB"}}>/</span>
@@ -1528,11 +2324,9 @@ function ResultsScreen({ data, filename, onReset }) {
 
           <div style={{display:"flex",flexDirection:"column",gap:16}}>
 
-            {/* ── OVERVIEW ── */}
             {activeTab==="overview" && (<>
-              {/* Score hero */}
               <div style={{background:"#0F1C2E",borderRadius:14,padding:28,
-                display:"flex",alignItems:"center",gap:32,flexWrap:"wrap",flexDirection: isMobile ? "column" : "row"}}>
+                display:"flex",alignItems:"center",gap:32,flexWrap:"wrap"}}>
                 <ScoreRing score={data.overall_score} color={scoreColor} size={130} light={true}/>
                 <div style={{flex:1,minWidth:220}}>
                   <div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.35)",
@@ -1553,7 +2347,7 @@ function ResultsScreen({ data, filename, onReset }) {
                 </div>
               </div>
 
-              <div style={{display:"grid",gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",gap:14}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
                 <Panel title="Strengths" icon={<CheckIcon/>} accent="#059669">
                   <div style={{display:"flex",flexDirection:"column",gap:9}}>
                     {(data.strengths||[]).map((s,i)=>(
@@ -1588,7 +2382,7 @@ function ResultsScreen({ data, filename, onReset }) {
                 </Panel>
               )}
 
-              <div style={{display:"grid",gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",gap:14}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
                 <Panel title="Technical Skills" icon={<CheckIcon/>} accent="#1B4F8A">
                   <div style={{display:"flex",flexWrap:"wrap",gap:7}}>
                     {(data.skills?.technical||[]).map((s,i)=><Tag key={i} color="indigo">{s}</Tag>)}
@@ -1620,7 +2414,6 @@ function ResultsScreen({ data, filename, onReset }) {
               </Panel>
             </>)}
 
-            {/* ── ATS ── */}
             {activeTab==="ats" && (<>
               <Panel title="ATS Compatibility Score" icon={<CheckIcon/>}
                 accent={data.scores?.ats_compatibility>=70?"#059669":"#D97706"}>
@@ -1628,7 +2421,7 @@ function ResultsScreen({ data, filename, onReset }) {
                   <ScoreRing score={data.scores?.ats_compatibility||0} size={100}
                     color={data.scores?.ats_compatibility>=70?"#059669":"#D97706"}/>
                   <p style={{flex:1,fontSize:13,color:"#4B5563",lineHeight:1.7}}>
-                    ATS systems automatically screen resumes before a recruiter sees them. A low score means your resume may be rejected before any human reviews it.
+                    ATS systems automatically screen resumes before a recruiter sees them.
                   </p>
                 </div>
               </Panel>
@@ -1652,7 +2445,6 @@ function ResultsScreen({ data, filename, onReset }) {
               </Panel>
             </>)}
 
-            {/* ── JOB MATCH ── */}
             {activeTab==="job-match" && (<>
               <Panel title="Paste Job Description" icon={<BriefcaseIcon/>} accent="#1B4F8A">
                 <textarea placeholder="Paste the full job description here…"
@@ -1681,7 +2473,7 @@ function ResultsScreen({ data, filename, onReset }) {
                     </div>
                   </div>
                 </Panel>
-                <div style={{display:"grid",gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",gap:14}}>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
                   <Panel title="Matched Skills" icon={<CheckIcon/>} accent="#059669">
                     <div style={{display:"flex",flexWrap:"wrap",gap:7}}>
                       {(matchResult.matched_skills||[]).map((s,i)=><Tag key={i} color="green">{s}</Tag>)}
@@ -1694,7 +2486,7 @@ function ResultsScreen({ data, filename, onReset }) {
                   </Panel>
                 </div>
                 <Panel title="Missing Keywords" icon={<AlertIcon/>} accent="#D97706">
-                  <p style={{fontSize:12,color:"#9CA3AF",marginBottom:10}}>Add these keywords to pass ATS filters for this role:</p>
+                  <p style={{fontSize:12,color:"#9CA3AF",marginBottom:10}}>Add these keywords to pass ATS filters:</p>
                   <div style={{display:"flex",flexWrap:"wrap",gap:7}}>
                     {(matchResult.missing_keywords||[]).map((k,i)=><Tag key={i} color="amber">{k}</Tag>)}
                   </div>
@@ -1713,7 +2505,6 @@ function ResultsScreen({ data, filename, onReset }) {
               </>)}
             </>)}
 
-            {/* ── REWRITE ── */}
             {activeTab==="rewrite" && (<>
               <Panel title="Rewrite Weak Bullet Points" icon={<PenIcon/>} accent="#1B4F8A">
                 <p style={{fontSize:13,color:"#6B7280",marginBottom:14,lineHeight:1.6}}>
@@ -1724,7 +2515,7 @@ function ResultsScreen({ data, filename, onReset }) {
                     <label key={i} style={{display:"flex",gap:10,padding:"11px 14px",
                       background:selectedBullets.includes(b)?"#EEF3FB":"#FAFBFD",
                       border:`1.5px solid ${selectedBullets.includes(b)?"#1B4F8A":"#DDE3EE"}`,
-                      borderRadius:9,cursor:"pointer",transition:"all .15s"}}>
+                      borderRadius:9,cursor:"pointer"}}>
                       <input type="checkbox" checked={selectedBullets.includes(b)}
                         onChange={e=>setSelectedBullets(p=>e.target.checked?[...p,b]:p.filter(x=>x!==b))}
                         style={{marginTop:2,accentColor:"#1B4F8A"}}/>
@@ -1766,13 +2557,18 @@ function ResultsScreen({ data, filename, onReset }) {
               )}
             </>)}
 
-            {activeTab==="tailor"    && <TailorTab    resumeText={data.resume_text} originalScore={data.overall_score}/>}
+            {activeTab==="tailor"    && <TailorTab resumeText={data.resume_text} originalScore={data.overall_score}/>}
             {activeTab==="cover"     && <CoverLetterTab resumeText={data.resume_text}/>}
-            {activeTab==="interview" && <InterviewTab  resumeText={data.resume_text}/>}
-            {activeTab==="saved"     && <SavedJobsTab  savedJobs={savedJobs} unsaveJob={unsaveJob}/>}
+            {activeTab==="interview" && <InterviewTab resumeText={data.resume_text}/>}
+            {activeTab==="saved"     && <SavedJobsTab savedJobs={savedJobs} unsaveJob={unsaveJob}/>}
             {activeTab==="jobs"      && <JobsTab
               resumeSkills={[...(data.skills?.technical||[]),...(data.skills?.soft||[])]}
               savedJobs={savedJobs} saveJob={saveJob} unsaveJob={unsaveJob} isJobSaved={isJobSaved}/>}
+
+            {/* ── 3 NEW FEATURE TABS ── */}
+            {activeTab==="simulator" && <InterviewSimulatorTab/>}
+            {activeTab==="tracker"   && <ApplicationTrackerTab/>}
+            {activeTab==="versions"  && <ResumeVersionManagerTab/>}
 
           </div>
         </main>
@@ -1791,7 +2587,6 @@ export default function App() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Fira+Code:wght@300;400;500&display=swap');
         * { box-sizing:border-box; margin:0; padding:0; }
-        html, body { overflow-x:hidden; max-width:100vw; }
         body { font-family:'Sora',sans-serif; background:#F4F6FB; }
         @keyframes spin { to { transform:rotate(360deg); } }
         ::-webkit-scrollbar { width:5px; }
@@ -1799,20 +2594,6 @@ export default function App() {
         textarea:focus { border-color:#1B4F8A !important; box-shadow:0 0 0 3px rgba(27,79,138,0.1) !important; }
         input:focus    { border-color:#1B4F8A !important; box-shadow:0 0 0 3px rgba(27,79,138,0.1) !important; }
         button:hover   { opacity:0.88; }
-        @media (max-width: 768px) {
-          .upload-grid { grid-template-columns: 1fr !important; }
-          .upload-divider { display: none !important; }
-          .upload-right { padding-left: 0 !important; padding-top: 24px !important; }
-          .upload-left { padding-right: 0 !important; }
-          .results-layout { flex-direction: column !important; }
-          .sidebar { width: 100% !important; height: auto !important; position: relative !important; top: auto !important; flex-direction: row !important; overflow-x: auto !important; padding: 8px !important; }
-          .sidebar-nav { display: flex !important; flex-direction: row !important; gap: 4px !important; overflow-x: auto !important; }
-          .sidebar-group-label { display: none !important; }
-          .main-content { padding: 16px !important; }
-          .score-hero { flex-direction: column !important; }
-          .two-col-grid { grid-template-columns: 1fr !important; }
-          .header-filename { max-width: 100px !important; }
-        }
       `}</style>
       {result
         ? <ResultsScreen data={result} filename={filename} onReset={()=>{setResult(null);setFilename("");}}/>
