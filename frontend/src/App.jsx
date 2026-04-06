@@ -2,8 +2,6 @@ import { useState, useRef, useEffect } from "react";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-// ── Shared feature config ─────────────────────────────────────────────────────
-// Change FEATURE_USER_ID to your real auth user id
 const FEATURE_USER_ID  = "user_123";
 const INTERVIEW_API    = `${API}/api/interview`;
 const TRACKER_API      = `${API}/api/applications`;
@@ -120,6 +118,11 @@ const DollarIcon = () => (
 const ChevronDown = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
     <polyline points="6 9 12 15 18 9"/>
+  </svg>
+);
+const MenuIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+    <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
   </svg>
 );
 
@@ -287,7 +290,7 @@ function UploadScreen({ onAnalyzed }) {
   return (
     <div style={{minHeight:"100vh",background:"#0F1C2E",fontFamily:"'Sora',sans-serif",
       display:"flex",flexDirection:"column"}}>
-      <header style={{padding:"0 40px",height:58,display:"flex",alignItems:"center",
+      <header className="upload-header" style={{padding:"0 40px",height:58,display:"flex",alignItems:"center",
         justifyContent:"space-between",flexShrink:0,
         borderBottom:"1px solid rgba(255,255,255,0.07)"}}>
         <div style={{display:"flex",alignItems:"center",gap:9}}>
@@ -298,19 +301,19 @@ function UploadScreen({ onAnalyzed }) {
             background:"rgba(255,255,255,0.07)",color:"rgba(255,255,255,0.4)",
             fontWeight:700,letterSpacing:"0.08em",border:"1px solid rgba(255,255,255,0.1)"}}>BETA</span>
         </div>
-        <span style={{fontSize:12,color:"rgba(255,255,255,0.3)",letterSpacing:"0.02em"}}>AI-Powered Resume Intelligence</span>
+        <span className="upload-tagline" style={{fontSize:12,color:"rgba(255,255,255,0.3)",letterSpacing:"0.02em"}}>AI-Powered Resume Intelligence</span>
       </header>
 
       <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:"32px 24px"}}>
-        <div style={{width:"100%",maxWidth:960,display:"grid",
+        <div className="upload-three-col" style={{width:"100%",maxWidth:960,display:"grid",
           gridTemplateColumns:"1fr 1px 400px",gap:0,alignItems:"center"}}>
-          <div style={{paddingRight:56}}>
+          <div className="upload-left-pad" style={{paddingRight:56}}>
             <div style={{display:"inline-flex",alignItems:"center",gap:6,padding:"5px 12px",
               marginBottom:24,background:"rgba(74,158,232,0.12)",
               border:"1px solid rgba(74,158,232,0.25)",borderRadius:20}}>
               <span style={{fontSize:11,color:"#7EB3F5",fontWeight:700,letterSpacing:"0.08em"}}>AI-POWERED RESUME TOOL</span>
             </div>
-            <h1 style={{fontSize:42,fontWeight:800,color:"#FFFFFF",lineHeight:1.18,
+            <h1 className="upload-hero-title" style={{fontSize:42,fontWeight:800,color:"#FFFFFF",lineHeight:1.18,
               letterSpacing:"-0.03em",marginBottom:14}}>
               Land your next job<br/>
               <span style={{background:"linear-gradient(90deg,#4A9EE8,#7EB3F5)",
@@ -321,7 +324,7 @@ function UploadScreen({ onAnalyzed }) {
             <p style={{fontSize:15,color:"rgba(255,255,255,0.45)",lineHeight:1.75,marginBottom:36,maxWidth:440}}>
               Upload your resume and get instant AI analysis, ATS audit, job matching, tailored rewrites, cover letters, and interview prep.
             </p>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px 24px"}}>
+            <div className="cap-two-col" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px 24px"}}>
               {CAPABILITIES.map((cap,i) => (
                 <div key={i} style={{display:"flex",alignItems:"flex-start",gap:10}}>
                   <div style={{width:20,height:20,borderRadius:6,background:"rgba(27,79,138,0.35)",
@@ -338,8 +341,8 @@ function UploadScreen({ onAnalyzed }) {
               ))}
             </div>
           </div>
-          <div style={{alignSelf:"stretch",background:"rgba(255,255,255,0.08)",margin:"0 0"}}/>
-          <div style={{paddingLeft:48}}>
+          <div className="upload-divider" style={{alignSelf:"stretch",background:"rgba(255,255,255,0.08)"}}/>
+          <div className="upload-right-pad" style={{paddingLeft:48}}>
             <div style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.1)",
               borderRadius:16,overflow:"hidden"}}>
               <div style={{padding:"18px 22px",borderBottom:"1px solid rgba(255,255,255,0.07)"}}>
@@ -433,6 +436,7 @@ function TailorTab({ resumeText, originalScore }) {
   const [loading, setLoading]     = useState(false);
   const [copied, setCopied]       = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [downloadingDocx, setDownloadingDocx] = useState(false);
   const [tailoredScore, setTailoredScore] = useState(null);
   const [scoringLoading, setScoringLoading] = useState(false);
 
@@ -482,6 +486,23 @@ function TailorTab({ resumeText, originalScore }) {
     finally { setDownloading(false); }
   };
 
+  const downloadDocx = async () => {
+    setDownloadingDocx(true);
+    try {
+      const r = await fetch(`${API}/download-resume-docx`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resume_text: result.tailored_resume, filename: "tailored_resume" }),
+      });
+      if (!r.ok) throw new Error("DOCX generation failed");
+      const blob = await r.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href = url; a.download = "tailored_resume.docx"; a.click();
+      URL.revokeObjectURL(url);
+    } catch(e) { alert(e.message); }
+    finally { setDownloadingDocx(false); }
+  };
+
   const copy = () => {
     navigator.clipboard.writeText(result.tailored_resume);
     setCopied(true); setTimeout(() => setCopied(false), 2000);
@@ -510,7 +531,7 @@ function TailorTab({ resumeText, originalScore }) {
 
       {result && (
         <>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <div className="two-col-grid-12" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
             <Card title="Changes Made" icon={<CheckIcon/>} accent="#059669">
               <div style={{display:"flex",flexDirection:"column",gap:7}}>
                 {result.changes_made?.map((c,i) => (
@@ -547,7 +568,7 @@ function TailorTab({ resumeText, originalScore }) {
                 display:"flex",alignItems:"center",gap:8}}>
                 <span>📊</span> Score Comparison
               </div>
-              <div style={{display:"flex",alignItems:"center",gap:0,justifyContent:"center"}}>
+              <div className="score-flex" style={{display:"flex",alignItems:"center",gap:0,justifyContent:"center"}}>
                 <div style={{textAlign:"center",flex:1}}>
                   <div style={{fontSize:11,fontWeight:600,color:"#9ea3b5",textTransform:"uppercase",
                     letterSpacing:"0.08em",marginBottom:8}}>Before</div>
@@ -589,7 +610,7 @@ function TailorTab({ resumeText, originalScore }) {
           )}
 
           <Card title="Your Tailored Resume" icon={<FileIcon/>} accent="#7c3aed">
-            <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginBottom:10}}>
+            <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginBottom:10,flexWrap:"wrap"}}>
               <button onClick={copy}
                 style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",
                   background:copied?"#ecfdf5":"#f5f3ff",
@@ -600,12 +621,21 @@ function TailorTab({ resumeText, originalScore }) {
               </button>
               <button onClick={downloadPdf} disabled={downloading}
                 style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",
-                  background:downloading?"#f9fafb":"#4f61f5",
+                  background:downloading?"#f9fafb":"#dc2626",
                   border:"none",borderRadius:8,fontSize:12,fontWeight:600,
                   color:downloading?"#9ea3b5":"#fff",
                   cursor:downloading?"not-allowed":"pointer",
-                  boxShadow:downloading?"none":"0 2px 8px rgba(79,97,245,0.3)"}}>
-                {downloading?<><SpinIcon/>Generating PDF…</>:<><DownloadIcon/>Download PDF</>}
+                  boxShadow:downloading?"none":"0 2px 8px rgba(220,38,38,0.3)"}}>
+                {downloading?<><SpinIcon/>Generating…</>:<><DownloadIcon/>Download PDF</>}
+              </button>
+              <button onClick={downloadDocx} disabled={downloadingDocx}
+                style={{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",
+                  background:downloadingDocx?"#f9fafb":"#1B4F8A",
+                  border:"none",borderRadius:8,fontSize:12,fontWeight:600,
+                  color:downloadingDocx?"#9ea3b5":"#fff",
+                  cursor:downloadingDocx?"not-allowed":"pointer",
+                  boxShadow:downloadingDocx?"none":"0 2px 8px rgba(27,79,138,0.3)"}}>
+                {downloadingDocx?<><SpinIcon/>Generating…</>:<><DownloadIcon/>Download Word</>}
               </button>
             </div>
             <pre style={{whiteSpace:"pre-wrap",fontSize:12.5,fontFamily:"'Fira Code',monospace",
@@ -662,7 +692,7 @@ function CoverLetterTab({ resumeText }) {
         </p>
         <div style={{marginBottom:14}}>
           <div style={{fontSize:12,fontWeight:600,color:"#374151",marginBottom:8}}>Tone</div>
-          <div style={{display:"flex",gap:8}}>
+          <div className="tone-btn-row" style={{display:"flex",gap:8}}>
             {TONES.map(t => (
               <button key={t.value} onClick={() => setTone(t.value)}
                 style={{flex:1,padding:"8px 12px",borderRadius:9,
@@ -691,7 +721,7 @@ function CoverLetterTab({ resumeText }) {
 
       {result && (
         <>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <div className="two-col-grid-12" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
             <Card title="Application Details" icon={<BriefcaseIcon/>} accent="#0891b2">
               <div style={{display:"flex",flexDirection:"column",gap:8}}>
                 <div>
@@ -751,7 +781,7 @@ function CoverLetterTab({ resumeText }) {
   );
 }
 
-// ── InterviewTab (Q&A generator — existing tab) ───────────────────────────────
+// ── InterviewTab ──────────────────────────────────────────────────────────────
 function InterviewTab({ resumeText }) {
   const [jobDesc, setJobDesc]   = useState("");
   const [result, setResult]     = useState(null);
@@ -803,7 +833,7 @@ function InterviewTab({ resumeText }) {
 
       {result && (
         <>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <div className="two-col-grid-12" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
             <Card title="Topics to Study" icon={<StarIcon/>} accent="#0891b2">
               <div style={{display:"flex",flexWrap:"wrap",gap:7}}>
                 {result.key_topics_to_study?.map((t,i) => (
@@ -897,7 +927,7 @@ function SavedJobsTab({ savedJobs, unsaveJob }) {
       <span style={{fontSize:13,color:"#6b7280",fontFamily:"'Fira Code',monospace"}}>
         {savedJobs.length} saved job{savedJobs.length !== 1 ? "s" : ""}
       </span>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(380px,1fr))",gap:12}}>
+      <div className="jobs-auto-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(380px,1fr))",gap:12}}>
         {savedJobs.map((job, i) => {
           const salary = fmtSalary(job.salary_min, job.salary_max);
           return (
@@ -1012,7 +1042,7 @@ function JobsTab({ resumeSkills = [], savedJobs = [], saveJob, unsaveJob, isJobS
       <div style={{background:"#fff",border:"1px solid #e3e6ef",borderRadius:14,padding:20,boxShadow:"0 1px 4px rgba(0,0,0,0.06)"}}>
         {resumeSkills.length > 0 && (
           <div style={{marginBottom:12,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-            <span style={{fontSize:12,color:"#6b7280",fontFamily:"'Fira Code',monospace"}}>Suggested from resume:</span>
+            <span style={{fontSize:12,color:"#6b7280",fontFamily:"'Fira Code',monospace"}}>Suggested:</span>
             {resumeSkills.slice(0,6).map((s,i) => (
               <button key={i} onClick={()=>setKeywords(s)}
                 style={{padding:"3px 10px",background:"#eef0fe",border:"1px solid rgba(79,97,245,0.2)",
@@ -1020,11 +1050,11 @@ function JobsTab({ resumeSkills = [], savedJobs = [], saveJob, unsaveJob, isJobS
             ))}
           </div>
         )}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+        <div className="jobs-search-two-col" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
           <div style={{position:"relative",display:"flex",alignItems:"center"}}>
             <span style={{position:"absolute",left:10,color:"#9ea3b5"}}><SearchIcon/></span>
             <input style={{...inputStyle,width:"100%",paddingLeft:32}}
-              placeholder="Job title, skills, keywords…"
+              placeholder="Job title, skills…"
               value={keywords} onChange={e=>setKeywords(e.target.value)}
               onKeyDown={e=>e.key==="Enter"&&search(1)}/>
           </div>
@@ -1036,7 +1066,7 @@ function JobsTab({ resumeSkills = [], savedJobs = [], saveJob, unsaveJob, isJobS
               onKeyDown={e=>e.key==="Enter"&&search(1)}/>
           </div>
         </div>
-        <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+        <div className="job-filters-row" style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
           <select style={{...selectStyle,flex:1,minWidth:120}} value={country} onChange={e=>setCountry(e.target.value)}>
             {COUNTRIES.map(c=><option key={c.code} value={c.code}>{c.label}</option>)}
           </select>
@@ -1069,15 +1099,14 @@ function JobsTab({ resumeSkills = [], savedJobs = [], saveJob, unsaveJob, isJobS
 
       {searched && !loading && (
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
-          <span style={{fontSize:13,color:"#6b7280",fontFamily:"'Fira Code',monospace"}}>
+          <span style={{fontSize:13,color:"#6b7280"}}>
             {total.toLocaleString()} jobs found
-            {keywords && <> for "<strong style={{color:"#374151"}}>{keywords}</strong>"</>}
           </span>
-          <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
             {filteredOut > 0 && (
               <span style={{fontSize:11,padding:"3px 10px",background:"#fef2f2",
                 border:"1px solid rgba(220,38,38,0.2)",borderRadius:20,color:"#dc2626",fontWeight:500}}>
-                🚫 {filteredOut} citizenship/clearance jobs hidden
+                🚫 {filteredOut} hidden
               </span>
             )}
             <span style={{fontSize:12,color:"#9ea3b5"}}>Powered by Adzuna</span>
@@ -1086,7 +1115,7 @@ function JobsTab({ resumeSkills = [], savedJobs = [], saveJob, unsaveJob, isJobS
       )}
 
       {jobs.length > 0 && (
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(380px,1fr))",gap:12}}>
+        <div className="jobs-auto-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(380px,1fr))",gap:12}}>
           {jobs.map((job,i) => {
             const salary = fmtSalary(job.salary_min, job.salary_max);
             return (
@@ -1119,10 +1148,6 @@ function JobsTab({ resumeSkills = [], savedJobs = [], saveJob, unsaveJob, isJobS
                     {job.location && <span style={{display:"flex",alignItems:"center",gap:4,fontSize:12,color:"#6b7280"}}><MapPinIcon/>{job.location}</span>}
                     {job.created && <span style={{display:"flex",alignItems:"center",gap:4,fontSize:12,color:"#6b7280"}}><ClockIcon/>{fmtDate(job.created)}</span>}
                     {salary && <span style={{display:"flex",alignItems:"center",gap:4,fontSize:12,color:"#059669",fontWeight:600}}><DollarIcon/>{salary}</span>}
-                  </div>
-                  <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
-                    {job.category && <span style={{padding:"2px 8px",background:"#eef0fe",color:"#4f61f5",borderRadius:20,fontSize:11,fontWeight:500}}>{job.category}</span>}
-                    {job.contract && <span style={{padding:"2px 8px",background:"#ecfdf5",color:"#059669",borderRadius:20,fontSize:11,fontWeight:500,textTransform:"capitalize"}}>{job.contract.replace("_"," ")}</span>}
                   </div>
                   <p style={{fontSize:12,color:"#6b7280",lineHeight:1.6,
                     display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical",overflow:"hidden"}}>
@@ -1167,10 +1192,7 @@ function JobsTab({ resumeSkills = [], savedJobs = [], saveJob, unsaveJob, isJobS
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// NEW FEATURE: INTERVIEW SIMULATOR (with answer grading)
-// ═══════════════════════════════════════════════════════════════════════════════
-
+// ── Interview Simulator ───────────────────────────────────────────────────────
 const SIM_COLORS = {
   orange:"#FB923C", blue:"#3B82F6", green:"#16A34A",
   red:"#DC2626", yellow:"#D97706", purple:"#7C3AED",
@@ -1196,7 +1218,7 @@ function SimScoreCircle({ score, size = 80 }) {
   return (
     <div style={{width:size,height:size,borderRadius:"50%",
       border:`4px solid ${color}`,display:"flex",
-      flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+      flexDirection:"column",alignItems:"center",justifyContent:"center",flexShrink:0}}>
       <span style={{fontSize:size*0.28,fontWeight:800,color}}>{score}</span>
       <span style={{fontSize:size*0.14,color:SIM_COLORS.mid}}>/ 100</span>
     </div>
@@ -1369,7 +1391,7 @@ function SimQuestionScreen({ session, onComplete }) {
 
       {grade && (
         <div style={{background:SIM_COLORS.white,border:`1px solid ${SIM_COLORS.border}`,borderRadius:14,padding:20}}>
-          <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:16}}>
+          <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:16,flexWrap:"wrap"}}>
             <SimScoreCircle score={grade.score} size={70}/>
             <div>
               <span style={{fontSize:16,fontWeight:800,
@@ -1377,7 +1399,7 @@ function SimQuestionScreen({ session, onComplete }) {
               <p style={{margin:"4px 0 0",fontSize:12.5,color:SIM_COLORS.mid}}>💡 {grade.tip}</p>
             </div>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+          <div className="sim-two-col" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
             <div style={{background:"#F0FDF4",borderRadius:10,padding:12}}>
               <p style={{fontSize:12,fontWeight:700,color:SIM_COLORS.green,margin:"0 0 6px"}}>✅ What was good</p>
               {grade.strengths?.map((s,i)=>(
@@ -1491,10 +1513,7 @@ function InterviewSimulatorTab() {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// NEW FEATURE: APPLICATION TRACKER (Kanban Board)
-// ═══════════════════════════════════════════════════════════════════════════════
-
+// ── Application Tracker ───────────────────────────────────────────────────────
 const KANBAN_COLUMNS = [
   { id:"applied",   label:"Applied",   emoji:"📤", color:"#3B82F6", bg:"#EFF6FF" },
   { id:"screening", label:"Screening", emoji:"🔍", color:"#D97706", bg:"#FFFBEB" },
@@ -1509,7 +1528,7 @@ const KBN = {
 
 function KbnToast({ msg, type }) {
   return (
-    <div style={{position:"fixed",bottom:24,right:24,zIndex:9999,
+    <div style={{position:"fixed",bottom:80,right:16,zIndex:9999,
       background:type==="error"?"#DC2626":"#16A34A",color:"#fff",
       padding:"12px 20px",borderRadius:10,fontSize:13,fontWeight:600,
       boxShadow:"0 4px 20px rgba(0,0,0,0.15)"}}>
@@ -1527,7 +1546,7 @@ function KbnStatsDashboard({ stats }) {
     { label:"Offer Rate",     value:`${stats.offer_rate}%`,    color:"#16A34A" },
   ];
   return (
-    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
+    <div className="stats-four-col" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
       {cards.map(c => (
         <div key={c.label} style={{background:KBN.white,border:`1px solid ${KBN.border}`,
           borderRadius:12,padding:"14px 16px"}}>
@@ -1567,11 +1586,11 @@ function KbnAddModal({ onClose, onSave }) {
 
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",
-      display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}}>
-      <div style={{background:KBN.white,borderRadius:14,width:"90%",maxWidth:520,
+      display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:1000}}>
+      <div className="modal-base" style={{background:KBN.white,borderRadius:14,width:"90%",maxWidth:520,
         padding:24,maxHeight:"90vh",overflowY:"auto"}}>
         <h3 style={{fontSize:16,fontWeight:800,margin:"0 0 18px"}}>+ Add Job Application</h3>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+        <div className="modal-inner-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
           <div style={{gridColumn:"span 2"}}>
             <label style={S.label}>Job Title *</label>
             <input style={S.input} placeholder="AI Engineer" value={form.job_title}
@@ -1652,8 +1671,8 @@ function KbnDetailModal({ app, onClose, onUpdate, onDelete }) {
 
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",
-      display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}}>
-      <div style={{background:KBN.white,borderRadius:14,width:"90%",maxWidth:540,
+      display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:1000}}>
+      <div className="modal-base" style={{background:KBN.white,borderRadius:14,width:"90%",maxWidth:540,
         padding:24,maxHeight:"90vh",overflowY:"auto"}}>
         <div style={{display:"flex",justifyContent:"space-between",marginBottom:16}}>
           <div>
@@ -1716,7 +1735,7 @@ function KbnDetailModal({ app, onClose, onUpdate, onDelete }) {
           </>
         ) : (
           <>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <div className="modal-inner-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
               {[["job_title","Job Title"],["company","Company"],["location","Location"],
                 ["salary","Salary"],["interview_date","Interview Date"],
                 ["contact_name","Contact Name"],["contact_email","Contact Email"]
@@ -1760,7 +1779,7 @@ function KbnAppCard({ app, onClick }) {
       <p style={{fontSize:13,fontWeight:700,color:KBN.dark,margin:"0 0 2px",
         whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{app.job_title}</p>
       <p style={{fontSize:12,color:KBN.mid,margin:"0 0 6px"}}>{app.company}</p>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:4}}>
         {app.salary && <span style={{fontSize:11,color:"#16A34A",fontWeight:600}}>{app.salary}</span>}
         {app.location && <span style={{fontSize:11,color:KBN.mid}}>📍 {app.location}</span>}
         <span style={{fontSize:11,color:KBN.mid,marginLeft:"auto"}}>
@@ -1812,7 +1831,7 @@ function ApplicationTrackerTab() {
   return (
     <div>
       {toast && <KbnToast msg={toast.msg} type={toast.type}/>}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,flexWrap:"wrap",gap:10}}>
         <div>
           <h2 style={{fontSize:18,fontWeight:800,margin:"0 0 4px"}}>📋 Application Tracker</h2>
           <p style={{color:KBN.mid,fontSize:13,margin:0}}>Track every job application in one place</p>
@@ -1829,29 +1848,31 @@ function ApplicationTrackerTab() {
       {loading ? (
         <p style={{color:KBN.mid,textAlign:"center",padding:40}}>Loading...</p>
       ) : (
-        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:12,overflowX:"auto"}}>
-          {KANBAN_COLUMNS.map(col=>(
-            <div key={col.id}>
-              <div style={{background:col.bg,borderRadius:"10px 10px 0 0",
-                padding:"10px 12px",border:`1px solid ${col.color}30`,
-                borderBottom:`2px solid ${col.color}`}}>
-                <span style={{fontSize:13,fontWeight:700,color:col.color}}>{col.emoji} {col.label}</span>
-                <span style={{marginLeft:6,background:col.color+"20",color:col.color,
-                  fontSize:11,fontWeight:700,padding:"1px 7px",borderRadius:20}}>
-                  {byStatus[col.id]?.length||0}
-                </span>
+        <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
+          <div className="kanban-five-col" style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:12,minWidth:900}}>
+            {KANBAN_COLUMNS.map(col=>(
+              <div key={col.id}>
+                <div style={{background:col.bg,borderRadius:"10px 10px 0 0",
+                  padding:"10px 12px",border:`1px solid ${col.color}30`,
+                  borderBottom:`2px solid ${col.color}`}}>
+                  <span style={{fontSize:13,fontWeight:700,color:col.color}}>{col.emoji} {col.label}</span>
+                  <span style={{marginLeft:6,background:col.color+"20",color:col.color,
+                    fontSize:11,fontWeight:700,padding:"1px 7px",borderRadius:20}}>
+                    {byStatus[col.id]?.length||0}
+                  </span>
+                </div>
+                <div style={{background:KBN.bg,border:`1px solid ${KBN.border}`,
+                  borderTop:"none",borderRadius:"0 0 10px 10px",padding:"10px 8px",minHeight:200}}>
+                  {byStatus[col.id]?.length===0 && (
+                    <p style={{fontSize:12,color:KBN.border,textAlign:"center",paddingTop:20}}>No applications</p>
+                  )}
+                  {byStatus[col.id]?.map(app=>(
+                    <KbnAppCard key={app.id} app={app} onClick={()=>setSelected(app)}/>
+                  ))}
+                </div>
               </div>
-              <div style={{background:KBN.bg,border:`1px solid ${KBN.border}`,
-                borderTop:"none",borderRadius:"0 0 10px 10px",padding:"10px 8px",minHeight:200}}>
-                {byStatus[col.id]?.length===0 && (
-                  <p style={{fontSize:12,color:KBN.border,textAlign:"center",paddingTop:20}}>No applications</p>
-                )}
-                {byStatus[col.id]?.map(app=>(
-                  <KbnAppCard key={app.id} app={app} onClick={()=>setSelected(app)}/>
-                ))}
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
 
@@ -1865,10 +1886,7 @@ function ApplicationTrackerTab() {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// NEW FEATURE: RESUME VERSION MANAGER
-// ═══════════════════════════════════════════════════════════════════════════════
-
+// ── Resume Version Manager ────────────────────────────────────────────────────
 const VER_ICONS = {
   plus:    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
   edit:    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
@@ -1891,7 +1909,7 @@ const VER_STYLES = {
   actionBtn:{display:"flex",alignItems:"center",gap:4,background:"none",border:"none",
     color:"#6B7280",fontSize:12,cursor:"pointer",padding:"4px 8px",borderRadius:6,fontWeight:500},
   overlay:{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",
-    alignItems:"center",justifyContent:"center",zIndex:1000},
+    alignItems:"flex-end",justifyContent:"center",zIndex:1000},
   modal:{background:"#fff",borderRadius:14,width:"90%",maxWidth:640,maxHeight:"90vh",
     overflowY:"auto",padding:24,boxShadow:"0 20px 60px rgba(0,0,0,0.2)"},
   input:{width:"100%",border:"1px solid #E5E7EB",borderRadius:8,padding:"9px 12px",
@@ -1910,7 +1928,7 @@ function VerScoreBadge({ score }) {
 function VerModal({ title, onClose, children }) {
   return (
     <div style={VER_STYLES.overlay}>
-      <div style={VER_STYLES.modal}>
+      <div className="modal-base" style={VER_STYLES.modal}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
           <h3 style={{fontSize:16,fontWeight:700,margin:0}}>{title}</h3>
           <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:"#9CA3AF",padding:4}}>{VER_ICONS.close}</button>
@@ -2006,7 +2024,7 @@ function ResumeVersionManagerTab() {
   return (
     <div>
       {toast && (
-        <div style={{position:"fixed",bottom:24,right:24,zIndex:9999,
+        <div style={{position:"fixed",bottom:80,right:16,zIndex:9999,
           background:toast.type==="error"?"#DC2626":"#16A34A",color:"#fff",
           padding:"12px 20px",borderRadius:10,fontSize:13,fontWeight:600,
           boxShadow:"0 4px 20px rgba(0,0,0,0.15)"}}>
@@ -2014,14 +2032,14 @@ function ResumeVersionManagerTab() {
         </div>
       )}
 
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,flexWrap:"wrap",gap:10}}>
         <div>
           <h2 style={{fontSize:18,fontWeight:800,margin:"0 0 4px"}}>📄 Resume Versions</h2>
           <p style={{fontSize:13,color:"#6B7280",margin:0}}>{versions.length} version{versions.length!==1?"s":""} saved</p>
         </div>
-        <div style={{display:"flex",gap:10}}>
+        <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
           {compareIds.length===2 && (
-            <button onClick={handleCompare} style={VER_STYLES.compareBtn}>{VER_ICONS.compare} Compare Selected</button>
+            <button onClick={handleCompare} style={VER_STYLES.compareBtn}>{VER_ICONS.compare} Compare</button>
           )}
           <button onClick={()=>{setForm({name:"",content:"",target_role:""});setShowCreate(true);}}
             style={VER_STYLES.primaryBtn}>{VER_ICONS.plus} New Version</button>
@@ -2046,7 +2064,7 @@ function ResumeVersionManagerTab() {
           </button>
         </div>
       ) : (
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:16}}>
+        <div className="versions-auto-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:16}}>
           {versions.map(v=>(
             <div key={v.id} style={{...VER_STYLES.card,
               border:v.is_active?"2px solid #FB923C":"1px solid #E5E7EB",
@@ -2130,7 +2148,7 @@ function ResumeVersionManagerTab() {
 
       {showCompare && compareResult && (
         <VerModal title="Version Comparison" onClose={()=>{setShowCompare(false);setCompareIds([]);}}>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+          <div className="compare-two-col" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
             {[compareResult.version1,compareResult.version2].map((v,i)=>(
               <div key={v.id} style={{background:"#F9FAFB",borderRadius:10,padding:14,border:"1px solid #E5E7EB"}}>
                 <div style={{fontSize:11,fontWeight:700,color:"#FB923C",textTransform:"uppercase",letterSpacing:0.5}}>
@@ -2174,6 +2192,7 @@ function ResumeVersionManagerTab() {
 // ── Results Screen ────────────────────────────────────────────────────────────
 function ResultsScreen({ data, filename, onReset }) {
   const [activeTab, setActiveTab] = useState("overview");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [savedJobs, setSavedJobs] = useState(() => {
     try { return JSON.parse(localStorage.getItem("applyedge_saved") || "[]"); }
     catch { return []; }
@@ -2218,15 +2237,15 @@ function ResultsScreen({ data, filename, onReset }) {
     { id:"overview",   emoji:"📊", label:"Overview",          group:"Analysis" },
     { id:"ats",        emoji:"🛡️", label:"ATS Check",         group:"Analysis" },
     { id:"job-match",  emoji:"🎯", label:"Job Match",         group:"Optimize" },
-    { id:"rewrite",    emoji:"✏️", label:"Bullet Rewrite",    group:"Optimize" },
-    { id:"tailor",     emoji:"✨", label:"Tailor Resume",     group:"Optimize" },
-    { id:"versions",   emoji:"📄", label:"Resume Versions",   group:"Manage" },
+    { id:"rewrite",    emoji:"✏️", label:"Rewrite",           group:"Optimize" },
+    { id:"tailor",     emoji:"✨", label:"Tailor",            group:"Optimize" },
+    { id:"versions",   emoji:"📄", label:"Versions",          group:"Manage" },
     { id:"cover",      emoji:"📝", label:"Cover Letter",      group:"Apply" },
     { id:"interview",  emoji:"🎤", label:"Interview Q&A",     group:"Apply" },
-    { id:"simulator",  emoji:"🎯", label:"Interview Simulator",group:"Apply" },
-    { id:"tracker",    emoji:"📋", label:"Application Tracker",group:"Apply" },
+    { id:"simulator",  emoji:"🎯", label:"Simulator",         group:"Apply" },
+    { id:"tracker",    emoji:"📋", label:"Tracker",           group:"Apply" },
     { id:"jobs",       emoji:"🔍", label:"Find Jobs",         group:"Apply" },
-    { id:"saved",      emoji:"🔖", label:"Saved Jobs",        group:"Apply", badge: savedJobs.length||null },
+    { id:"saved",      emoji:"🔖", label:"Saved",             group:"Apply", badge: savedJobs.length||null },
   ];
 
   const groups = ["Analysis","Optimize","Manage","Apply"];
@@ -2235,26 +2254,46 @@ function ResultsScreen({ data, filename, onReset }) {
     fontSize:13, fontFamily:"'Sora',sans-serif", color:"#0F1C2E",
     outline:"none", lineHeight:1.65 };
 
+  const handleTabChange = (id) => {
+    setActiveTab(id);
+    setSidebarOpen(false);
+  };
+
   return (
     <div style={{minHeight:"100vh",background:"#F4F6FB",fontFamily:"'Sora',sans-serif",display:"flex",flexDirection:"column"}}>
-      <header style={{background:"#0F1C2E",padding:"0 32px",height:56,
+      {/* Mobile drawer backdrop */}
+      {sidebarOpen && (
+        <div onClick={()=>setSidebarOpen(false)}
+          style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:99,
+            backdropFilter:"blur(2px)"}}/>
+      )}
+
+      {/* Header */}
+      <header className="app-header" style={{background:"#0F1C2E",padding:"0 32px",height:56,
         display:"flex",alignItems:"center",justifyContent:"space-between",
         flexShrink:0,position:"sticky",top:0,zIndex:20,
         borderBottom:"1px solid rgba(255,255,255,0.08)",
         boxShadow:"0 2px 12px rgba(0,0,0,0.3)"}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <div style={{width:30,height:30,background:"#1B4F8A",borderRadius:7,
-            display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>⚡</div>
+          {/* Logo — clickable on mobile to open sidebar */}
+          <button onClick={()=>setSidebarOpen(o=>!o)}
+            style={{width:30,height:30,background:"#1B4F8A",borderRadius:7,
+              display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,
+              border:"none",cursor:"pointer",flexShrink:0}}>⚡</button>
           <span style={{fontSize:16,fontWeight:700,color:"#FFFFFF",letterSpacing:"-0.02em"}}>ApplyEdge</span>
-          <div style={{width:1,height:18,background:"rgba(255,255,255,0.2)",margin:"0 10px"}}/>
-          <div style={{display:"flex",alignItems:"center",gap:6,padding:"5px 12px",
+          {/* Current tab name — visible only on mobile */}
+          <span className="mobile-tab-label" style={{fontSize:13,color:"rgba(255,255,255,0.5)",fontWeight:400}}>
+            / {NAV.find(n=>n.id===activeTab)?.label}
+          </span>
+          <div className="header-file-badge" style={{display:"flex",alignItems:"center",gap:6,padding:"5px 12px",
+            marginLeft:4,
             background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:8}}>
             <span style={{fontSize:14}}>📄</span>
             <span style={{fontSize:12,fontWeight:500,color:"#E2E8F0",maxWidth:200,
               overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{filename}</span>
           </div>
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
           <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 14px",
             background:data.overall_score>=60?"rgba(16,185,129,0.2)":"rgba(220,38,38,0.2)",
             border:`1.5px solid ${data.overall_score>=60?"rgba(16,185,129,0.5)":"rgba(220,38,38,0.5)"}`,
@@ -2262,7 +2301,7 @@ function ResultsScreen({ data, filename, onReset }) {
             <span style={{fontSize:14,fontWeight:800,color:data.overall_score>=60?"#34D399":"#F87171"}}>
               {data.overall_score}/100
             </span>
-            <span style={{fontSize:12,fontWeight:600,color:"#CBD5E1"}}>
+            <span className="score-label" style={{fontSize:12,fontWeight:600,color:"#CBD5E1"}}>
               {data.overall_score>=80?"Excellent":data.overall_score>=60?"Good":data.overall_score>=40?"Fair":"Needs Work"}
             </span>
           </div>
@@ -2270,25 +2309,42 @@ function ResultsScreen({ data, filename, onReset }) {
             style={{padding:"6px 16px",background:"rgba(255,255,255,0.08)",
               border:"1.5px solid rgba(255,255,255,0.2)",borderRadius:8,
               color:"#E2E8F0",fontSize:13,fontWeight:600,cursor:"pointer",
-              display:"flex",alignItems:"center",gap:6}}>
-            ← New Resume
+              display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap"}}>
+            ← New
           </button>
         </div>
       </header>
 
-      <div style={{flex:1,display:"flex"}}>
-        <aside style={{width:220,flexShrink:0,background:"#FFFFFF",
+      <div className="results-layout" style={{flex:1,display:"flex"}}>
+        {/* Sidebar */}
+        <aside className={`results-sidebar${sidebarOpen?" mobile-open":""}`} style={{width:220,flexShrink:0,background:"#FFFFFF",
           borderRight:"1px solid #DDE3EE",
           position:"sticky",top:56,height:"calc(100vh - 56px)",
           overflowY:"auto",padding:"20px 0"}}>
+          {/* Mobile close button inside sidebar */}
+          <div className="sidebar-mobile-header" style={{display:"none",padding:"12px 18px 16px",
+            borderBottom:"1px solid #EEF0F5",marginBottom:8}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <div style={{width:28,height:28,background:"#1B4F8A",borderRadius:7,
+                  display:"flex",alignItems:"center",justifyContent:"center",fontSize:15}}>⚡</div>
+                <span style={{fontSize:15,fontWeight:700,color:"#0F1C2E"}}>ApplyEdge</span>
+              </div>
+              <button onClick={()=>setSidebarOpen(false)}
+                style={{background:"#F3F4F6",border:"none",borderRadius:8,
+                  width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",
+                  cursor:"pointer",color:"#6B7280",fontSize:18,fontWeight:300}}>✕</button>
+            </div>
+          </div>
           {groups.map(group => (
-            <div key={group} style={{marginBottom:6}}>
-              <div style={{padding:"4px 18px 8px",fontSize:10,fontWeight:700,
+            <div key={group}>
+              <div className="sidebar-group-header" style={{padding:"4px 18px 8px",fontSize:10,fontWeight:700,
                 color:"#9CA3AF",letterSpacing:"0.1em",textTransform:"uppercase"}}>
                 {group}
               </div>
               {NAV.filter(n=>n.group===group).map(n=>(
-                <button key={n.id} onClick={()=>setActiveTab(n.id)}
+                <button key={n.id} onClick={()=>handleTabChange(n.id)}
+                  className={`sidebar-nav-item${activeTab===n.id?" sidebar-nav-item-active":""}`}
                   style={{width:"100%",display:"flex",alignItems:"center",gap:9,
                     padding:"9px 18px",border:"none",cursor:"pointer",textAlign:"left",
                     background:activeTab===n.id?"#EEF3FB":"transparent",
@@ -2308,12 +2364,13 @@ function ResultsScreen({ data, filename, onReset }) {
                   ) : null}
                 </button>
               ))}
-              <div style={{height:1,background:"#EEF0F5",margin:"10px 18px 4px"}}/>
+              <div className="sidebar-section-divider" style={{height:1,background:"#EEF0F5",margin:"10px 18px 4px"}}/>
             </div>
           ))}
         </aside>
 
-        <main style={{flex:1,padding:"28px 32px",overflowY:"auto",minWidth:0}}>
+        {/* Main Content */}
+        <main className="results-main-pad" style={{flex:1,padding:"28px 32px",overflowY:"auto",minWidth:0}}>
           <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:20}}>
             <span style={{fontSize:12,color:"#9CA3AF"}}>ApplyEdge</span>
             <span style={{fontSize:12,color:"#D1D5DB"}}>/</span>
@@ -2347,7 +2404,7 @@ function ResultsScreen({ data, filename, onReset }) {
                 </div>
               </div>
 
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+              <div className="two-col-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
                 <Panel title="Strengths" icon={<CheckIcon/>} accent="#059669">
                   <div style={{display:"flex",flexDirection:"column",gap:9}}>
                     {(data.strengths||[]).map((s,i)=>(
@@ -2382,7 +2439,7 @@ function ResultsScreen({ data, filename, onReset }) {
                 </Panel>
               )}
 
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+              <div className="two-col-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
                 <Panel title="Technical Skills" icon={<CheckIcon/>} accent="#1B4F8A">
                   <div style={{display:"flex",flexWrap:"wrap",gap:7}}>
                     {(data.skills?.technical||[]).map((s,i)=><Tag key={i} color="indigo">{s}</Tag>)}
@@ -2420,7 +2477,7 @@ function ResultsScreen({ data, filename, onReset }) {
                 <div style={{display:"flex",alignItems:"center",gap:24,flexWrap:"wrap"}}>
                   <ScoreRing score={data.scores?.ats_compatibility||0} size={100}
                     color={data.scores?.ats_compatibility>=70?"#059669":"#D97706"}/>
-                  <p style={{flex:1,fontSize:13,color:"#4B5563",lineHeight:1.7}}>
+                  <p style={{flex:1,fontSize:13,color:"#4B5563",lineHeight:1.7,minWidth:200}}>
                     ATS systems automatically screen resumes before a recruiter sees them.
                   </p>
                 </div>
@@ -2462,7 +2519,7 @@ function ResultsScreen({ data, filename, onReset }) {
                   <div style={{display:"flex",alignItems:"center",gap:28,flexWrap:"wrap"}}>
                     <ScoreRing score={matchResult.match_score}
                       color={matchResult.match_score>=70?"#059669":matchResult.match_score>=50?"#D97706":"#DC2626"}/>
-                    <div style={{flex:1}}>
+                    <div style={{flex:1,minWidth:200}}>
                       <div style={{marginBottom:8}}><Tag color={matchResult.match_score>=70?"green":matchResult.match_score>=50?"amber":"red"}>{matchResult.verdict}</Tag></div>
                       <p style={{fontSize:13,color:"#4B5563",lineHeight:1.7,marginBottom:10}}>{matchResult.summary}</p>
                       <div style={{padding:"10px 14px",borderRadius:8,fontSize:13,fontWeight:600,
@@ -2473,7 +2530,7 @@ function ResultsScreen({ data, filename, onReset }) {
                     </div>
                   </div>
                 </Panel>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+                <div className="two-col-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
                   <Panel title="Matched Skills" icon={<CheckIcon/>} accent="#059669">
                     <div style={{display:"flex",flexWrap:"wrap",gap:7}}>
                       {(matchResult.matched_skills||[]).map((s,i)=><Tag key={i} color="green">{s}</Tag>)}
@@ -2523,10 +2580,10 @@ function ResultsScreen({ data, filename, onReset }) {
                     </label>
                   ))}
                 </div>
-                <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
                   <input placeholder="Target job title (optional)"
                     value={jobTitle} onChange={e=>setJobTitle(e.target.value)}
-                    style={{flex:1,padding:"9px 12px",background:"#FAFBFD",
+                    style={{flex:1,minWidth:180,padding:"9px 12px",background:"#FAFBFD",
                       border:"1.5px solid #DDE3EE",borderRadius:8,fontSize:13,
                       fontFamily:"'Sora',sans-serif",outline:"none",color:"#0F1C2E"}}/>
                   <PrimaryBtn onClick={runRewrite} disabled={!selectedBullets.length||rewriteLoading}>
@@ -2564,8 +2621,6 @@ function ResultsScreen({ data, filename, onReset }) {
             {activeTab==="jobs"      && <JobsTab
               resumeSkills={[...(data.skills?.technical||[]),...(data.skills?.soft||[])]}
               savedJobs={savedJobs} saveJob={saveJob} unsaveJob={unsaveJob} isJobSaved={isJobSaved}/>}
-
-            {/* ── 3 NEW FEATURE TABS ── */}
             {activeTab==="simulator" && <InterviewSimulatorTab/>}
             {activeTab==="tracker"   && <ApplicationTrackerTab/>}
             {activeTab==="versions"  && <ResumeVersionManagerTab/>}
@@ -2587,6 +2642,7 @@ export default function App() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Fira+Code:wght@300;400;500&display=swap');
         * { box-sizing:border-box; margin:0; padding:0; }
+        html { -webkit-text-size-adjust: 100%; }
         body { font-family:'Sora',sans-serif; background:#F4F6FB; }
         @keyframes spin { to { transform:rotate(360deg); } }
         ::-webkit-scrollbar { width:5px; }
@@ -2594,6 +2650,121 @@ export default function App() {
         textarea:focus { border-color:#1B4F8A !important; box-shadow:0 0 0 3px rgba(27,79,138,0.1) !important; }
         input:focus    { border-color:#1B4F8A !important; box-shadow:0 0 0 3px rgba(27,79,138,0.1) !important; }
         button:hover   { opacity:0.88; }
+        .mobile-tab-label { display: none; }
+        .sidebar-mobile-header { display: none; }
+
+        /* ── TABLET (≤900px) ── */
+        @media (max-width: 900px) {
+          .upload-three-col { grid-template-columns: 1fr !important; }
+          .upload-divider { display: none !important; }
+          .upload-left-pad { padding-right: 0 !important; }
+          .upload-right-pad { padding-left: 0 !important; }
+          .two-col-grid { grid-template-columns: 1fr !important; }
+          .two-col-grid-12 { grid-template-columns: 1fr !important; }
+          .results-sidebar { width: 180px !important; }
+          .results-main-pad { padding: 20px !important; }
+          .stats-four-col { grid-template-columns: repeat(2,1fr) !important; }
+          .compare-two-col { grid-template-columns: 1fr !important; }
+        }
+
+        /* ── MOBILE (≤640px) ── */
+        @media (max-width: 640px) {
+          /* Upload page */
+          .upload-header { padding: 0 16px !important; }
+          .upload-tagline { display: none !important; }
+          .upload-hero-title { font-size: 28px !important; line-height: 1.25 !important; }
+          .upload-three-col { padding: 0 !important; }
+          .cap-two-col { grid-template-columns: 1fr !important; }
+
+          /* App header */
+          .app-header { padding: 0 12px !important; min-height: 56px !important; height: auto !important; }
+          .header-file-badge { display: none !important; }
+          .score-label { display: none !important; }
+
+          /* Sidebar → hidden by default on mobile, shown as drawer via JS */
+          .results-sidebar {
+            position: fixed !important;
+            top: 0 !important;
+            left: -100% !important;
+            bottom: 0 !important;
+            width: 280px !important;
+            height: 100vh !important;
+            z-index: 100 !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            padding: 20px 0 !important;
+            border-right: 1px solid #DDE3EE !important;
+            box-shadow: 4px 0 24px rgba(0,0,0,0.15) !important;
+            transition: left 0.28s cubic-bezier(0.4,0,0.2,1) !important;
+          }
+          .results-sidebar.mobile-open {
+            left: 0 !important;
+          }
+          .sidebar-group-header { display: block !important; }
+          .sidebar-section-divider { display: block !important; }
+          .sidebar-nav-item {
+            flex-direction: row !important;
+            padding: 12px 20px !important;
+            width: 100% !important;
+            border-left: 3px solid transparent !important;
+            gap: 12px !important;
+            font-size: 14px !important;
+          }
+          .sidebar-nav-item-active {
+            border-left-color: #1B4F8A !important;
+            background: #EEF3FB !important;
+          }
+          .sidebar-nav-item span:first-child { font-size: 18px !important; }
+          .sidebar-nav-item span:nth-child(2) { font-size: 14px !important; }
+
+          /* Main content */
+          .results-layout { flex-direction: column !important; }
+          .results-main-pad {
+            padding: 14px !important;
+            padding-bottom: 24px !important;
+          }
+
+          /* All grids stack */
+          .two-col-grid { grid-template-columns: 1fr !important; }
+          .two-col-grid-12 { grid-template-columns: 1fr !important; }
+          .stats-four-col { grid-template-columns: repeat(2,1fr) !important; }
+          .versions-auto-grid { grid-template-columns: 1fr !important; }
+          .jobs-auto-grid { grid-template-columns: 1fr !important; }
+          .jobs-search-two-col { grid-template-columns: 1fr !important; }
+          .job-filters-row { flex-wrap: wrap !important; }
+          .tone-btn-row { flex-direction: column !important; }
+          .sim-two-col { grid-template-columns: 1fr !important; }
+          .compare-two-col { grid-template-columns: 1fr !important; }
+          .score-flex { flex-direction: column !important; align-items: center !important; }
+
+          /* Mobile tab label — hidden on desktop */
+          .mobile-tab-label { display: none !important; }
+
+          /* Kanban: horizontal scroll */
+          .kanban-five-col {
+            grid-template-columns: repeat(5, 240px) !important;
+            min-width: unset !important;
+          }
+
+          /* Modals: bottom sheet */
+          .modal-base {
+            width: 100% !important;
+            max-width: 100% !important;
+            border-radius: 20px 20px 0 0 !important;
+            max-height: 88vh !important;
+          }
+          .modal-inner-grid { grid-template-columns: 1fr !important; }
+
+          /* Show mobile sidebar header */
+          .sidebar-mobile-header { display: block !important; }
+
+          /* Show mobile tab label in header */
+          .mobile-tab-label { display: inline !important; }
+
+          /* Overview dark card */
+          .overview-dark { padding: 20px !important; }
+          .overview-dark > div { gap: 20px !important; }
+        }
       `}</style>
       {result
         ? <ResultsScreen data={result} filename={filename} onReset={()=>{setResult(null);setFilename("");}}/>
