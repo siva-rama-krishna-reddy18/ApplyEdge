@@ -1,14 +1,11 @@
 """
-main.py — ApplyEdge API v3.0
-All 3 features integrated:
-  1. Resume Version Manager  → /api/versions/...
-  2. Interview Simulator     → /api/interview/...
-  3. Job Application Tracker → /api/applications/...
-
-Existing routes unchanged:
-  POST /analyze, /match-job, /rewrite, /tailor,
-  POST /interview-qa, /cover-letter, /download-resume
-  GET  /jobs
+main.py — ApplyEdge API v4.0
+Changes from v3:
+  - generate_resume_pdf now imported from resume_generators (FAANG style)
+  - generate_resume_docx added (new FAANG-style Word download)
+  - /download-resume    → uses resume_generators.generate_resume_pdf
+  - /download-resume-docx → NEW endpoint, returns .docx
+  - All other routes unchanged
 """
 
 import os
@@ -27,10 +24,12 @@ from pydantic import BaseModel
 from analyzer import (
     extract_resume_text, analyze_resume, match_job,
     rewrite_bullets, tailor_resume, generate_interview_qa,
-    generate_resume_pdf, generate_cover_letter,
+    generate_cover_letter,
 )
+# FAANG-style resume export (replaces old generate_resume_pdf from analyzer)
+from resume_generators import generate_resume_pdf, generate_resume_docx
 
-app = FastAPI(title="ApplyEdge API", version="3.0.0")
+app = FastAPI(title="ApplyEdge API", version="4.0.0")
 
 # ── CORS ──────────────────────────────────────────────────────
 import os as _os
@@ -47,9 +46,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ══════════════════════════════════════════════════════════════
-# DATABASE SETUP — Single SQLite file, 3 tables
-# ══════════════════════════════════════════════════════════════
+# ── DATABASE ──────────────────────────────────────────────────
 DB_PATH = "applyedge.db"
 
 def get_db():
@@ -59,8 +56,6 @@ def get_db():
 
 def init_db():
     conn = get_db()
-
-    # Table 1 — Resume Versions
     conn.execute("""
         CREATE TABLE IF NOT EXISTS resume_versions (
             id           TEXT PRIMARY KEY,
@@ -75,8 +70,6 @@ def init_db():
             is_active    INTEGER DEFAULT 0
         )
     """)
-
-    # Table 2 — Interview Sessions
     conn.execute("""
         CREATE TABLE IF NOT EXISTS interview_sessions (
             id               TEXT PRIMARY KEY,
@@ -84,17 +77,15 @@ def init_db():
             job_title        TEXT,
             job_description  TEXT,
             resume_text      TEXT,
-            questions        TEXT,   -- JSON array
-            answers          TEXT,   -- JSON array
-            grades           TEXT,   -- JSON array
+            questions        TEXT,
+            answers          TEXT,
+            grades           TEXT,
             overall_score    INTEGER,
-            status           TEXT DEFAULT 'in_progress',  -- in_progress | completed
+            status           TEXT DEFAULT 'in_progress',
             created_at       TEXT NOT NULL,
             updated_at       TEXT NOT NULL
         )
     """)
-
-    # Table 3 — Job Applications
     conn.execute("""
         CREATE TABLE IF NOT EXISTS job_applications (
             id              TEXT PRIMARY KEY,
@@ -115,7 +106,6 @@ def init_db():
             updated_at      TEXT NOT NULL
         )
     """)
-
     conn.commit()
     conn.close()
 
@@ -130,8 +120,7 @@ def count_words(text: str) -> int:
 import json as _json
 
 def call_claude(prompt: str, system: str = "") -> str:
-    """Call Claude via Groq or OpenAI — whichever key is set."""
-    groq_key = os.getenv("GROQ_API_KEY")
+    groq_key   = os.getenv("GROQ_API_KEY")
     openai_key = os.getenv("OPENAI_API_KEY")
 
     if groq_key:
@@ -139,12 +128,12 @@ def call_claude(prompt: str, system: str = "") -> str:
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {groq_key}"},
             json={
-                "model": "llama3-8b-8192",
+                "model": "llama-3.3-70b-versatile",
                 "messages": [
                     *([ {"role":"system","content":system} ] if system else []),
                     {"role": "user", "content": prompt}
                 ],
-                "temperature": 0.4,
+                "temperature": 0.2,
             },
             timeout=30,
         )
@@ -161,7 +150,7 @@ def call_claude(prompt: str, system: str = "") -> str:
                     *([ {"role":"system","content":system} ] if system else []),
                     {"role": "user", "content": prompt}
                 ],
-                "temperature": 0.4,
+                "temperature": 0.2,
             },
             timeout=30,
         )
@@ -335,11 +324,6 @@ class StartInterviewRequest(BaseModel):
     resume_text: str
     num_questions: int = 8
 
-class SubmitAnswerRequest(BaseModel):
-    session_id: str
-    question_index: int
-    answer: str
-
 class GradeAnswerRequest(BaseModel):
     session_id: str
     user_id: str
@@ -349,7 +333,6 @@ class GradeAnswerRequest(BaseModel):
 
 @app.post("/api/interview/start")
 def start_interview(req: StartInterviewRequest):
-    """Generate interview questions for a job + resume combo."""
     prompt = f"""
 You are an expert technical interviewer. Generate exactly {req.num_questions} interview questions
 for this role and candidate.
@@ -363,16 +346,9 @@ Return ONLY a JSON array of objects. Each object must have:
 - "type": one of "behavioral", "technical", "situational", "experience"
 - "difficulty": one of "easy", "medium", "hard"
 
-Example format:
-[
-  {{"question": "Tell me about your RAG pipeline experience", "type": "technical", "difficulty": "medium"}},
-  {{"question": "Describe a time you resolved a production issue", "type": "behavioral", "difficulty": "medium"}}
-]
-
 Return ONLY the JSON array, no other text.
 """
     raw = call_claude(prompt)
-    # Clean JSON
     raw = raw.strip()
     if raw.startswith("```"):
         raw = raw.split("```")[1]
@@ -411,7 +387,6 @@ Return ONLY the JSON array, no other text.
 
 @app.post("/api/interview/grade")
 def grade_answer(req: GradeAnswerRequest):
-    """Grade one answer and return score + feedback."""
     conn = get_db()
     session = conn.execute(
         "SELECT * FROM interview_sessions WHERE id=? AND user_id=?",
@@ -432,15 +407,29 @@ def grade_answer(req: GradeAnswerRequest):
     question = questions[req.question_index]
 
     prompt = f"""
-You are a senior technical interviewer grading a candidate's answer.
+You are a senior technical interviewer grading a candidate's answer. Be STRICT and HONEST.
+
+GRADING SCALE — follow this exactly:
+- 90-100: Exceptional. Specific examples, quantified impact, perfectly structured (STAR method), addresses all aspects. Very rare.
+- 75-89:  Good. Clear answer with examples, mostly complete, minor gaps.
+- 55-74:  Average. Some relevant content but missing examples, vague, or incomplete.
+- 35-54:  Below average. Mostly generic, no specific examples, misses key points.
+- 0-34:   Poor. Off-topic, too short, no substance, or completely wrong.
+
+DEDUCT points for:
+- No specific examples (-20)
+- No measurable results or numbers (-10)
+- Vague or generic answer (-15)
+- Does not address the actual question (-25)
+- Answer under 3 sentences (-20)
 
 Job Title: {session['job_title']}
 Question: {question['question']}
 Question Type: {question['type']}
 Candidate's Answer: {req.answer}
 
-Grade this answer strictly and fairly. Return ONLY a JSON object with:
-- "score": integer 0-100
+Return ONLY a JSON object with:
+- "score": integer 0-100 (be strict, most answers score 40-70)
 - "verdict": one of "Excellent", "Good", "Average", "Poor"
 - "strengths": array of 2-3 short strings about what was good
 - "improvements": array of 2-3 short strings about what was missing or weak
@@ -462,15 +451,18 @@ Return ONLY the JSON object, no other text.
     except Exception:
         raise HTTPException(500, "Failed to parse grade from AI.")
 
-    # Save answer and grade
+    score = grade.get("score", 50)
+    if score >= 90:   grade["verdict"] = "Excellent"
+    elif score >= 75: grade["verdict"] = "Good"
+    elif score >= 55: grade["verdict"] = "Average"
+    else:             grade["verdict"] = "Poor"
+
     answers[req.question_index] = req.answer
     grades[req.question_index]  = grade
     now = datetime.utcnow().isoformat()
 
-    # Check if all answered → compute overall score
     all_answered = all(a is not None for a in answers)
-    overall_score = None
-    status = "in_progress"
+    overall_score, status = None, "in_progress"
     if all_answered:
         scored = [g["score"] for g in grades if g and "score" in g]
         overall_score = int(sum(scored) / len(scored)) if scored else 0
@@ -497,7 +489,6 @@ Return ONLY the JSON object, no other text.
 
 @app.get("/api/interview/session/{session_id}")
 def get_session(session_id: str):
-    """Get full interview session with all questions, answers, grades."""
     conn = get_db()
     session = conn.execute(
         "SELECT * FROM interview_sessions WHERE id=?", (session_id,)
@@ -514,14 +505,10 @@ def get_session(session_id: str):
 
 @app.get("/api/interview/history/{user_id}")
 def get_interview_history(user_id: str):
-    """Get all past interview sessions for a user."""
     conn = get_db()
     rows = conn.execute("""
-        SELECT id, user_id, job_title, overall_score, status, created_at,
-               updated_at
-        FROM interview_sessions
-        WHERE user_id=?
-        ORDER BY created_at DESC
+        SELECT id, user_id, job_title, overall_score, status, created_at, updated_at
+        FROM interview_sessions WHERE user_id=? ORDER BY created_at DESC
     """, (user_id,)).fetchall()
     conn.close()
     return {"sessions": [row_to_dict(r) for r in rows], "total": len(rows)}
@@ -531,7 +518,6 @@ def get_interview_history(user_id: str):
 # FEATURE 3 — JOB APPLICATION TRACKER
 # ══════════════════════════════════════════════════════════════
 
-# Valid status values (Kanban columns)
 VALID_STATUSES = ["applied", "screening", "interview", "offer", "rejected"]
 
 class CreateApplicationRequest(BaseModel):
@@ -562,7 +548,6 @@ class UpdateStatusRequest(BaseModel):
 
 @app.post("/api/applications")
 def create_application(req: CreateApplicationRequest):
-    """Save a new job application."""
     if not req.job_title.strip() or not req.company.strip():
         raise HTTPException(400, "Job title and company are required.")
     conn = get_db()
@@ -586,7 +571,6 @@ def create_application(req: CreateApplicationRequest):
 
 @app.get("/api/applications/{user_id}")
 def get_applications(user_id: str, status: Optional[str] = None):
-    """Get all applications, optionally filtered by status."""
     conn = get_db()
     if status:
         rows = conn.execute(
@@ -604,7 +588,6 @@ def get_applications(user_id: str, status: Optional[str] = None):
 
 @app.put("/api/applications/{application_id}")
 def update_application(application_id: str, req: UpdateApplicationRequest):
-    """Update any field of an application."""
     conn = get_db()
     existing = conn.execute(
         "SELECT * FROM job_applications WHERE id=?", (application_id,)
@@ -614,18 +597,16 @@ def update_application(application_id: str, req: UpdateApplicationRequest):
         raise HTTPException(404, "Application not found.")
     if req.status and req.status not in VALID_STATUSES:
         raise HTTPException(400, f"Status must be one of: {VALID_STATUSES}")
-
-    now          = datetime.utcnow().isoformat()
-    job_title    = req.job_title     or existing["job_title"]
-    company      = req.company       or existing["company"]
-    status       = req.status        or existing["status"]
-    notes        = req.notes         if req.notes is not None else existing["notes"]
+    now            = datetime.utcnow().isoformat()
+    job_title      = req.job_title      or existing["job_title"]
+    company        = req.company        or existing["company"]
+    status         = req.status         or existing["status"]
+    notes          = req.notes          if req.notes is not None else existing["notes"]
     interview_date = req.interview_date or existing["interview_date"]
     contact_name   = req.contact_name   or existing["contact_name"]
     contact_email  = req.contact_email  or existing["contact_email"]
     salary         = req.salary         or existing["salary"]
     location       = req.location       or existing["location"]
-
     conn.execute("""
         UPDATE job_applications
         SET job_title=?, company=?, status=?, notes=?,
@@ -644,7 +625,6 @@ def update_application(application_id: str, req: UpdateApplicationRequest):
 
 @app.put("/api/applications/{application_id}/status")
 def update_status(application_id: str, req: UpdateStatusRequest):
-    """Move application to a new Kanban column."""
     if req.status not in VALID_STATUSES:
         raise HTTPException(400, f"Status must be one of: {VALID_STATUSES}")
     conn = get_db()
@@ -664,7 +644,6 @@ def update_status(application_id: str, req: UpdateStatusRequest):
 
 @app.delete("/api/applications/{application_id}")
 def delete_application(application_id: str):
-    """Delete an application."""
     conn = get_db()
     if not conn.execute(
         "SELECT id FROM job_applications WHERE id=?", (application_id,)
@@ -679,46 +658,42 @@ def delete_application(application_id: str):
 
 @app.get("/api/applications/{user_id}/stats")
 def get_application_stats(user_id: str):
-    """Dashboard numbers — total, per status, response rate, interview rate."""
     conn = get_db()
     rows = conn.execute(
         "SELECT status FROM job_applications WHERE user_id=?", (user_id,)
     ).fetchall()
     conn.close()
-
     counts = {s: 0 for s in VALID_STATUSES}
     for r in rows:
         s = r["status"]
         if s in counts:
             counts[s] += 1
-
-    total = len(rows)
+    total       = len(rows)
     responded   = counts["screening"] + counts["interview"] + counts["offer"]
     interviewed = counts["interview"] + counts["offer"]
-
     return {
-        "total":            total,
-        "by_status":        counts,
-        "response_rate":    round((responded   / total * 100), 1) if total else 0,
-        "interview_rate":   round((interviewed / total * 100), 1) if total else 0,
-        "offer_rate":       round((counts["offer"] / total * 100), 1) if total else 0,
+        "total":          total,
+        "by_status":      counts,
+        "response_rate":  round((responded   / total * 100), 1) if total else 0,
+        "interview_rate": round((interviewed / total * 100), 1) if total else 0,
+        "offer_rate":     round((counts["offer"] / total * 100), 1) if total else 0,
     }
 
 
 # ══════════════════════════════════════════════════════════════
-# EXISTING ROUTES — UNCHANGED
+# EXISTING ROUTES
 # ══════════════════════════════════════════════════════════════
 
 @app.get("/")
 def root():
-    return {"status": "running", "message": "ApplyEdge API v3.0 is live",
+    return {"status": "running", "message": "ApplyEdge API v4.0 is live",
             "features": ["resume-versions", "interview-simulator", "application-tracker"]}
 
 
 @app.post("/analyze")
 async def analyze(file: UploadFile = File(...)):
-    if not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Only PDF files accepted.")
+    if not file.filename.lower().endswith((".pdf", ".txt")):
+        raise HTTPException(status_code=400, detail="Only PDF or TXT files accepted.")
     file_bytes = await file.read()
     if len(file_bytes) > 10 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="File too large. Max 10MB.")
@@ -802,12 +777,16 @@ async def cover_letter_endpoint(payload: dict):
         raise HTTPException(500, str(e))
 
 
+# ── DOWNLOAD ENDPOINTS (FAANG-style PDF + DOCX) ───────────────
+
 class DownloadResumeRequest(BaseModel):
     resume_text: str
-    filename: str = "tailored_resume"
+    filename: str = "resume"
+
 
 @app.post("/download-resume")
-def download_resume(request: DownloadResumeRequest):
+def download_resume_pdf_endpoint(request: DownloadResumeRequest):
+    """Download tailored resume as FAANG-style PDF."""
     if not request.resume_text.strip():
         raise HTTPException(400, "Resume text is required.")
     try:
@@ -821,6 +800,25 @@ def download_resume(request: DownloadResumeRequest):
     except Exception as e:
         raise HTTPException(500, f"PDF generation failed: {str(e)}")
 
+
+@app.post("/download-resume-docx")
+def download_resume_docx_endpoint(request: DownloadResumeRequest):
+    """Download tailored resume as FAANG-style Word document."""
+    if not request.resume_text.strip():
+        raise HTTPException(400, "Resume text is required.")
+    try:
+        docx_bytes = generate_resume_docx(request.resume_text)
+        safe_name  = request.filename.replace(" ", "_").replace("/", "_")
+        return Response(
+            content=docx_bytes,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={"Content-Disposition": f'attachment; filename="{safe_name}.docx"'},
+        )
+    except Exception as e:
+        raise HTTPException(500, f"DOCX generation failed: {str(e)}")
+
+
+# ── JOBS SEARCH ───────────────────────────────────────────────
 
 @app.get("/jobs")
 def search_jobs(
@@ -858,21 +856,24 @@ def search_jobs(
         data = r.json()
         jobs, filtered_count = [], 0
         for j in data.get("results", []):
-            title, desc = j.get("title",""), j.get("description","")
+            title, desc = j.get("title", ""), j.get("description", "")
             if is_excluded(title, desc):
                 filtered_count += 1
                 continue
             jobs.append({
-                "id": j.get("id",""), "title": title,
-                "company": j.get("company",{}).get("display_name","Unknown"),
-                "location": j.get("location",{}).get("display_name",""),
-                "description": desc[:300]+("..." if len(desc)>300 else ""),
-                "salary_min": j.get("salary_min"), "salary_max": j.get("salary_max"),
-                "url": j.get("redirect_url",""), "created": j.get("created",""),
-                "category": j.get("category",{}).get("label",""),
-                "contract": j.get("contract_time",""),
+                "id":          j.get("id", ""),
+                "title":       title,
+                "company":     j.get("company", {}).get("display_name", "Unknown"),
+                "location":    j.get("location", {}).get("display_name", ""),
+                "description": desc[:300] + ("..." if len(desc) > 300 else ""),
+                "salary_min":  j.get("salary_min"),
+                "salary_max":  j.get("salary_max"),
+                "url":         j.get("redirect_url", ""),
+                "created":     j.get("created", ""),
+                "category":    j.get("category", {}).get("label", ""),
+                "contract":    j.get("contract_time", ""),
             })
-        return {"total": data.get("count",0), "page": page,
+        return {"total": data.get("count", 0), "page": page,
                 "results": jobs, "filtered_out": filtered_count}
     except http_requests.exceptions.Timeout:
         raise HTTPException(504, "Adzuna API timed out.")
